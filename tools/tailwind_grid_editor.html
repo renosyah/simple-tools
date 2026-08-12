@@ -1,0 +1,2145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Tailwind Responsive Grid Editor</title>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #111827;
+    color: white;
+}
+
+.toolbar {
+    height: 60px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 15px;
+    background: #1f2937;
+    border-bottom: 1px solid #374151;
+}
+
+button {
+    padding: 8px 14px;
+    border: 0;
+    border-radius: 5px;
+    cursor: pointer;
+    background: #374151;
+    color: white;
+}
+
+button:hover {
+    background: #4b5563;
+}
+
+button.active {
+    background: #2563eb;
+}
+
+.editor {
+    display: grid;
+    grid-template-columns: 1fr 420px;
+    height: calc(100vh - 60px);
+}
+
+.canvas-wrapper {
+    padding: 30px;
+    overflow: auto;
+}
+
+.canvas {
+    position: relative;
+
+    width: 900px;
+    min-height: 700px;
+
+    display: grid;
+
+    grid-template-columns: repeat(12, 1fr);
+    grid-auto-rows: 1fr;
+
+    gap: 4px;
+
+    background:
+        linear-gradient(
+            to right,
+            rgba(255,255,255,.08) 1px,
+            transparent 1px
+        ),
+        linear-gradient(
+            to bottom,
+            rgba(255,255,255,.08) 1px,
+            transparent 1px
+        );
+
+    background-size:
+        calc(100% / 12)
+        58.33px;
+
+    border: 2px solid #4b5563;
+}
+
+.block {
+    position: relative;
+
+    background: #2563eb;
+    border: 2px solid #60a5fa;
+
+    border-radius: 5px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    cursor: move;
+
+    user-select: none;
+
+    min-width: 0;
+    min-height: 0;
+
+    overflow: hidden;
+
+    font-size: 13px;
+}
+
+.block.selected {
+    border-color: #facc15;
+
+    box-shadow:
+        0 0 0 2px rgba(250,204,21,.3);
+}
+
+.block-content {
+    text-align: center;
+    pointer-events: none;
+
+    max-width: 100%;
+    padding: 4px;
+}
+
+.block-name {
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.block-class {
+    font-family: monospace;
+    font-size: 10px;
+    opacity: .8;
+
+    word-break: break-word;
+}
+
+.resize-handle {
+    position: absolute;
+
+    right: 0;
+    bottom: 0;
+
+    width: 16px;
+    height: 16px;
+
+    background: #facc15;
+
+    cursor: se-resize;
+
+    border-top-left-radius: 4px;
+}
+
+.sidebar {
+    border-left: 1px solid #374151;
+
+    background: #1f2937;
+
+    padding: 20px;
+
+    overflow-y: auto;
+}
+
+.sidebar h3 {
+    margin-top: 0;
+}
+
+.code {
+    background: #111827;
+
+    border: 1px solid #374151;
+
+    padding: 12px;
+
+    border-radius: 5px;
+
+    font-family: monospace;
+
+    font-size: 12px;
+
+    white-space: pre-wrap;
+
+    word-break: break-word;
+}
+
+.block-list {
+    margin-top: 20px;
+}
+
+.block-item {
+    padding: 8px;
+
+    margin-bottom: 5px;
+
+    background: #111827;
+
+    border-radius: 4px;
+
+    cursor: pointer;
+
+    font-size: 12px;
+}
+
+.block-item:hover {
+    background: #374151;
+}
+
+.hint {
+    color: #9ca3af;
+
+    font-size: 12px;
+
+    margin-top: 10px;
+}
+
+.breakpoint {
+    font-weight: bold;
+    margin-left: 10px;
+}
+
+.info-row {
+    margin-bottom: 5px;
+}
+
+.warning {
+    color: #fbbf24;
+}
+</style>
+</head>
+
+<body>
+
+<div class="toolbar">
+
+    <button
+        id="btn-sm"
+        onclick="switchBreakpoint('sm')">
+        SM
+    </button>
+
+    <button
+        id="btn-md"
+        onclick="switchBreakpoint('md')">
+        MD
+    </button>
+
+    <button
+        id="btn-lg"
+        onclick="switchBreakpoint('lg')">
+        LG
+    </button>
+
+    <span class="breakpoint">
+        Editing:
+        <span id="currentBreakpoint">lg</span>
+    </span>
+
+    <span style="flex:1"></span>
+
+    <button onclick="addBlock()">
+        + Add Block
+    </button>
+
+    <button onclick="deleteSelected()">
+        Delete
+    </button>
+
+    <button onclick="copyCode()">
+        Copy Code
+    </button>
+
+    <button onclick="resetCurrent()">
+        Reset
+    </button>
+
+</div>
+
+
+<div class="editor">
+
+    <div class="canvas-wrapper">
+
+        <div id="canvas" class="canvas"></div>
+
+        <div class="hint">
+            Drag blocks to move them.
+            Drag the yellow corner to resize.
+            Switch SM / MD / LG to edit each breakpoint.
+        </div>
+
+    </div>
+
+
+    <div class="sidebar">
+
+        <h3>Selected Block</h3>
+
+        <div id="selectedInfo">
+            Nothing selected
+        </div>
+
+        <hr>
+
+        <h3>Generated Tailwind</h3>
+
+        <div id="generatedCode" class="code"></div>
+
+        <div class="block-list">
+
+            <h3>Blocks</h3>
+
+            <div id="blockList"></div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<script>
+
+const COLS = 12;
+
+/*
+ * LG uses a fixed 12-row grid.
+ *
+ * SM / MD are allowed to grow vertically.
+ */
+const LG_ROWS = 12;
+
+
+/*
+ * ---------------------------------------------------------
+ * STATE
+ * ---------------------------------------------------------
+ */
+
+let currentBreakpoint = "lg";
+
+let selectedId = 1;
+
+let nextId = 7;
+
+
+/*
+ * Every block exists in ALL three breakpoints.
+ *
+ * Same ID = same logical block.
+ *
+ * Geometry can be completely different per breakpoint.
+ */
+
+const layouts = {
+
+    sm: [],
+
+    md: [],
+
+    lg: []
+
+};
+
+
+/*
+ * ---------------------------------------------------------
+ * INITIAL LG LAYOUT
+ * ---------------------------------------------------------
+ *
+ * Column 1: 3 / 6 / 3
+ * Column 2: 5 / 7
+ * Column 3: 12
+ */
+
+const initialLG = [
+
+    {
+        id: 1,
+        name: "1A",
+        colStart: 1,
+        colSpan: 4,
+        rowStart: 1,
+        rowSpan: 3
+    },
+
+    {
+        id: 2,
+        name: "1B",
+        colStart: 1,
+        colSpan: 4,
+        rowStart: 4,
+        rowSpan: 6
+    },
+
+    {
+        id: 3,
+        name: "1C",
+        colStart: 1,
+        colSpan: 4,
+        rowStart: 10,
+        rowSpan: 3
+    },
+
+    {
+        id: 4,
+        name: "2A",
+        colStart: 5,
+        colSpan: 6,
+        rowStart: 1,
+        rowSpan: 5
+    },
+
+    {
+        id: 5,
+        name: "2B",
+        colStart: 5,
+        colSpan: 6,
+        rowStart: 6,
+        rowSpan: 7
+    },
+
+    {
+        id: 6,
+        name: "3",
+        colStart: 11,
+        colSpan: 2,
+        rowStart: 1,
+        rowSpan: 12
+    }
+
+];
+
+
+/*
+ * ---------------------------------------------------------
+ * INITIAL MOBILE / TABLET LAYOUT
+ * ---------------------------------------------------------
+ *
+ * Everything is one column.
+ *
+ * They are still represented using the same
+ * 12-column / row system so the generated
+ * Tailwind classes remain predictable.
+ */
+
+const initialMobile = [
+
+    {
+        id: 1,
+        name: "1A",
+        colStart: 1,
+        colSpan: 12,
+        rowStart: 1,
+        rowSpan: 3
+    },
+
+    {
+        id: 2,
+        name: "1B",
+        colStart: 1,
+        colSpan: 12,
+        rowStart: 4,
+        rowSpan: 6
+    },
+
+    {
+        id: 3,
+        name: "1C",
+        colStart: 1,
+        colSpan: 12,
+        rowStart: 10,
+        rowSpan: 3
+    },
+
+    {
+        id: 4,
+        name: "2A",
+        colStart: 1,
+        colSpan: 12,
+        rowStart: 13,
+        rowSpan: 5
+    },
+
+    {
+        id: 5,
+        name: "2B",
+        colStart: 1,
+        colSpan: 12,
+        rowStart: 18,
+        rowSpan: 7
+    },
+
+    {
+        id: 6,
+        name: "3",
+        colStart: 1,
+        colSpan: 12,
+        rowStart: 25,
+        rowSpan: 12
+    }
+
+];
+
+
+layouts.lg =
+    structuredClone(initialLG);
+
+layouts.md =
+    structuredClone(initialMobile);
+
+layouts.sm =
+    structuredClone(initialMobile);
+
+
+/*
+ * ---------------------------------------------------------
+ * CANVAS
+ * ---------------------------------------------------------
+ */
+
+const canvas =
+    document.getElementById("canvas");
+
+
+/*
+ * ---------------------------------------------------------
+ * GET CURRENT LAYOUT
+ * ---------------------------------------------------------
+ */
+
+function getCurrentLayout() {
+
+    return layouts[currentBreakpoint];
+
+}
+
+
+/*
+ * ---------------------------------------------------------
+ * GET MAX ROW
+ * ---------------------------------------------------------
+ */
+
+function getMaxRows(bp = currentBreakpoint) {
+
+    const layout =
+        layouts[bp];
+
+    if (!layout.length) {
+
+        return LG_ROWS;
+
+    }
+
+
+    const contentRows =
+        layout.reduce(
+
+            (max, block) =>
+
+                Math.max(
+                    max,
+                    block.rowStart +
+                    block.rowSpan -
+                    1
+                ),
+
+            LG_ROWS
+
+        );
+
+
+    return Math.max(
+        LG_ROWS,
+        contentRows
+    );
+
+}
+
+
+/*
+ * ---------------------------------------------------------
+ * SWITCH BREAKPOINT
+ * ---------------------------------------------------------
+ */
+
+function switchBreakpoint(bp) {
+
+    currentBreakpoint = bp;
+
+    /*
+     * Keep selected block if it exists.
+     */
+
+    const exists =
+        layouts[bp].some(
+            block =>
+                block.id === selectedId
+        );
+
+
+    if (!exists) {
+
+        selectedId =
+            layouts[bp][0]?.id ??
+            null;
+
+    }
+
+
+    document
+        .getElementById(
+            "currentBreakpoint"
+        )
+        .textContent = bp;
+
+
+    document
+        .querySelectorAll(
+            ".toolbar button"
+        )
+        .forEach(button => {
+
+            button.classList.remove(
+                "active"
+            );
+
+        });
+
+
+    document
+        .getElementById(
+            "btn-" + bp
+        )
+        .classList.add(
+            "active"
+        );
+
+
+    render();
+
+}
+
+
+/*
+ * ---------------------------------------------------------
+ * ADD BLOCK
+ * ---------------------------------------------------------
+ *
+ * IMPORTANT:
+ *
+ * A new block MUST be created in:
+ *
+ * SM
+ * MD
+ * LG
+ *
+ * or it is not created at all.
+ */
+
+function addBlock() {
+
+    const id =
+        nextId;
+
+    const name =
+        "Block " + id;
+
+
+    /*
+     * Find a position in ALL breakpoints
+     * BEFORE changing any layout.
+     */
+
+    const positions = {};
+
+
+    for (
+        const bp of
+        ["sm", "md", "lg"]
+    ) {
+
+        const position =
+            findEmptyPosition(
+                bp,
+                2,
+                2
+            );
+
+
+        if (!position) {
+
+            alert(
+                `Cannot add block.\n\n` +
+                `${bp.toUpperCase()} has no available space.`
+            );
+
+            return;
+
+        }
+
+
+        positions[bp] =
+            position;
+
+    }
+
+
+    /*
+     * Everything is valid.
+     * Now create the block everywhere.
+     */
+
+    for (
+        const bp of
+        ["sm", "md", "lg"]
+    ) {
+
+        layouts[bp].push({
+
+            id: id,
+
+            name: name,
+
+            colStart:
+                positions[bp].col,
+
+            colSpan: 2,
+
+            rowStart:
+                positions[bp].row,
+
+            rowSpan: 2
+
+        });
+
+    }
+
+
+    nextId++;
+
+    selectedId =
+        id;
+
+    render();
+
+}
+
+
+/*
+ * ---------------------------------------------------------
+ * FIND EMPTY POSITION
+ * ---------------------------------------------------------
+ */
+
+function findEmptyPosition(
+    bp,
+    colSpan = 2,
+    rowSpan = 2
+) {
+
+    const layout =
+        layouts[bp];
+
+
+    /*
+     * LG is limited to 12 rows.
+     *
+     * SM / MD can grow vertically.
+     */
+
+    const maxRows =
+        bp === "lg"
+            ? LG_ROWS
+            : getMaxRows(bp) + rowSpan;
+
+
+    for (
+        let row = 1;
+        row <= maxRows;
+        row++
+    ) {
+
+        for (
+            let col = 1;
+            col <=
+            COLS - colSpan + 1;
+            col++
+        ) {
+
+            /*
+             * LG cannot extend beyond row 12.
+             */
+
+            if (
+                bp === "lg" &&
+                row + rowSpan - 1 >
+                LG_ROWS
+            ) {
+
+                continue;
+
+            }
+
+
+            if (
+                !isOccupied(
+                    col,
+                    row,
+                    colSpan,
+                    rowSpan,
+                    null,
+                    bp
+                )
+            ) {
+
+                return {
+
+                    col,
+                    row
+
+                };
+
+            }
+
+        }
+
+    }
+
+
+    return null;
+
+}
+
+
+/*
+ * ---------------------------------------------------------
+ * COLLISION
+ * ---------------------------------------------------------
+ */
+
+function isOccupied(
+    col,
+    row,
+    colSpan,
+    rowSpan,
+    ignoreId = null,
+    bp = currentBreakpoint
+) {
+
+    const layout =
+        layouts[bp];
+
+
+    for (
+        const block of layout
+    ) {
+
+        if (
+            block.id ===
+            ignoreId
+        ) {
+
+            continue;
+
+        }
+
+
+        const aLeft =
+            col;
+
+        const aRight =
+            col +
+            colSpan -
+            1;
+
+        const aTop =
+            row;
+
+        const aBottom =
+            row +
+            rowSpan -
+            1;
+
+
+        const bLeft =
+            block.colStart;
+
+        const bRight =
+            block.colStart +
+            block.colSpan -
+            1;
+
+        const bTop =
+            block.rowStart;
+
+        const bBottom =
+            block.rowStart +
+            block.rowSpan -
+            1;
+
+
+        const overlap =
+
+            aLeft <= bRight &&
+
+            aRight >= bLeft &&
+
+            aTop <= bBottom &&
+
+            aBottom >= bTop;
+
+
+        if (overlap) {
+
+            return true;
+
+        }
+
+    }
+
+
+    return false;
+
+}
+
+
+/*
+ * ---------------------------------------------------------
+ * RENDER
+ * ---------------------------------------------------------
+ */
+
+function render() {
+
+    canvas.innerHTML = "";
+
+
+    const layout =
+        getCurrentLayout();
+
+
+    const maxRows =
+        getMaxRows();
+
+
+    /*
+     * Grid columns
+     */
+
+    canvas.style.gridTemplateColumns =
+        `repeat(${COLS}, 1fr)`;
+
+
+    /*
+     * Each row gets equal height.
+     */
+
+    canvas.style.gridTemplateRows =
+        `repeat(${maxRows}, 58px)`;
+
+
+    /*
+     * Background grid
+     */
+
+    canvas.style.backgroundSize =
+
+        `calc(100% / ${COLS}) 58px`;
+
+
+    /*
+     * Render blocks
+     */
+
+    layout.forEach(
+        block => {
+
+            const el =
+                document.createElement(
+                    "div"
+                );
+
+
+            el.className =
+                "block";
+
+
+            if (
+                block.id ===
+                selectedId
+            ) {
+
+                el.classList.add(
+                    "selected"
+                );
+
+            }
+
+
+            el.style.gridColumn =
+                `${block.colStart} / span ${block.colSpan}`;
+
+
+            el.style.gridRow =
+                `${block.rowStart} / span ${block.rowSpan}`;
+
+
+            el.innerHTML = `
+
+                <div class="block-content">
+
+                    <div class="block-name">
+                        ${escapeHtml(
+                            block.name
+                        )}
+                    </div>
+
+                    <div class="block-class">
+                        ${escapeHtml(
+                            getTailwindClass(
+                                block
+                            )
+                        )}
+                    </div>
+
+                </div>
+
+                <div class="resize-handle"></div>
+
+            `;
+
+
+            /*
+             * Drag
+             */
+
+            el.addEventListener(
+                "mousedown",
+                e => {
+
+                    if (
+                        e.target.classList
+                            .contains(
+                                "resize-handle"
+                            )
+                    ) {
+
+                        return;
+
+                    }
+
+
+                    selectBlock(
+                        block.id
+                    );
+
+
+                    startDrag(
+                        e,
+                        block
+                    );
+
+                }
+            );
+
+
+            /*
+             * Resize
+             */
+
+            const handle =
+                el.querySelector(
+                    ".resize-handle"
+                );
+
+
+            handle.addEventListener(
+                "mousedown",
+                e => {
+
+                    e.stopPropagation();
+
+
+                    selectBlock(
+                        block.id
+                    );
+
+
+                    startResize(
+                        e,
+                        block
+                    );
+
+                }
+            );
+
+
+            canvas.appendChild(
+                el
+            );
+
+        }
+    );
+
+
+    updateSidebar();
+
+}
+
+
+/*
+ * ---------------------------------------------------------
+ * SELECT
+ * ---------------------------------------------------------
+ */
+
+function selectBlock(id) {
+
+    /*
+     * Make sure the selected ID exists
+     * in the current breakpoint.
+     */
+
+    const exists =
+        getCurrentLayout().some(
+            block =>
+                block.id === id
+        );
+
+
+    if (!exists) {
+
+        return;
+
+    }
+
+
+    selectedId =
+        id;
+
+
+    render();
+
+}
+
+
+/*
+ * ---------------------------------------------------------
+ * DRAG
+ * ---------------------------------------------------------
+ */
+
+function startDrag(
+    e,
+    block
+) {
+
+    e.preventDefault();
+
+
+    const rect =
+        canvas.getBoundingClientRect();
+
+
+    const maxRows =
+        getMaxRows();
+
+
+    const cellWidth =
+        rect.width /
+        COLS;
+
+
+    const cellHeight =
+        58;
+
+
+    const startX =
+        e.clientX;
+
+
+    const startY =
+        e.clientY;
+
+
+    const originalCol =
+        block.colStart;
+
+
+    const originalRow =
+        block.rowStart;
+
+
+    function move(ev) {
+
+        const dx =
+            ev.clientX -
+            startX;
+
+
+        const dy =
+            ev.clientY -
+            startY;
+
+
+        const colMove =
+            Math.round(
+                dx /
+                cellWidth
+            );
+
+
+        const rowMove =
+            Math.round(
+                dy /
+                cellHeight
+            );
+
+
+        let newCol =
+            originalCol +
+            colMove;
+
+
+        let newRow =
+            originalRow +
+            rowMove;
+
+
+        /*
+         * Keep inside columns.
+         */
+
+        newCol =
+            Math.max(
+                1,
+                Math.min(
+                    COLS -
+                    block.colSpan +
+                    1,
+                    newCol
+                )
+            );
+
+
+        /*
+         * Rows cannot go below 1.
+         */
+
+        newRow =
+            Math.max(
+                1,
+                newRow
+            );
+
+
+        /*
+         * LG cannot leave the 12-row grid.
+         */
+
+        if (
+            currentBreakpoint ===
+            "lg"
+        ) {
+
+            newRow =
+                Math.min(
+                    LG_ROWS -
+                    block.rowSpan +
+                    1,
+                    newRow
+                );
+
+        }
+
+
+        /*
+         * Check collision.
+         */
+
+        if (
+            !isOccupied(
+                newCol,
+                newRow,
+                block.colSpan,
+                block.rowSpan,
+                block.id
+            )
+        ) {
+
+            block.colStart =
+                newCol;
+
+            block.rowStart =
+                newRow;
+
+
+            render();
+
+        }
+
+    }
+
+
+    function stop() {
+
+        document.removeEventListener(
+            "mousemove",
+            move
+        );
+
+
+        document.removeEventListener(
+            "mouseup",
+            stop
+        );
+
+    }
+
+
+    document.addEventListener(
+        "mousemove",
+        move
+    );
+
+
+    document.addEventListener(
+        "mouseup",
+        stop
+    );
+
+}
+
+
+/*
+ * ---------------------------------------------------------
+ * RESIZE
+ * ---------------------------------------------------------
+ */
+
+function startResize(
+    e,
+    block
+) {
+
+    e.preventDefault();
+
+
+    const rect =
+        canvas.getBoundingClientRect();
+
+
+    const cellWidth =
+        rect.width /
+        COLS;
+
+
+    const cellHeight =
+        58;
+
+
+    const startX =
+        e.clientX;
+
+
+    const startY =
+        e.clientY;
+
+
+    const originalColSpan =
+        block.colSpan;
+
+
+    const originalRowSpan =
+        block.rowSpan;
+
+
+    function resize(ev) {
+
+        const dx =
+            ev.clientX -
+            startX;
+
+
+        const dy =
+            ev.clientY -
+            startY;
+
+
+        const colChange =
+            Math.round(
+                dx /
+                cellWidth
+            );
+
+
+        const rowChange =
+            Math.round(
+                dy /
+                cellHeight
+            );
+
+
+        let newColSpan =
+            originalColSpan +
+            colChange;
+
+
+        let newRowSpan =
+            originalRowSpan +
+            rowChange;
+
+
+        /*
+         * Minimum size = 1.
+         */
+
+        newColSpan =
+            Math.max(
+                1,
+                newColSpan
+            );
+
+
+        newRowSpan =
+            Math.max(
+                1,
+                newRowSpan
+            );
+
+
+        /*
+         * Don't leave the right edge.
+         */
+
+        newColSpan =
+            Math.min(
+                COLS -
+                block.colStart +
+                1,
+                newColSpan
+            );
+
+
+        /*
+         * LG cannot exceed 12 rows.
+         */
+
+        if (
+            currentBreakpoint ===
+            "lg"
+        ) {
+
+            newRowSpan =
+                Math.min(
+                    LG_ROWS -
+                    block.rowStart +
+                    1,
+                    newRowSpan
+                );
+
+        }
+
+
+        /*
+         * Collision check.
+         */
+
+        if (
+            !isOccupied(
+                block.colStart,
+                block.rowStart,
+                newColSpan,
+                newRowSpan,
+                block.id
+            )
+        ) {
+
+            block.colSpan =
+                newColSpan;
+
+            block.rowSpan =
+                newRowSpan;
+
+
+            render();
+
+        }
+
+    }
+
+
+    function stop() {
+
+        document.removeEventListener(
+            "mousemove",
+            resize
+        );
+
+
+        document.removeEventListener(
+            "mouseup",
+            stop
+        );
+
+    }
+
+
+    document.addEventListener(
+        "mousemove",
+        resize
+    );
+
+
+    document.addEventListener(
+        "mouseup",
+        stop
+    );
+
+}
+
+
+/*
+ * ---------------------------------------------------------
+ * TAILWIND CLASS
+ * ---------------------------------------------------------
+ */
+
+function getTailwindClass(
+    block
+) {
+
+    return [
+
+        `col-start-${block.colStart}`,
+
+        `col-span-${block.colSpan}`,
+
+        `row-start-${block.rowStart}`,
+
+        `row-span-${block.rowSpan}`
+
+    ].join(" ");
+
+}
+
+
+/*
+ * ---------------------------------------------------------
+ * RESPONSIVE TAILWIND CLASS
+ * ---------------------------------------------------------
+ */
+
+function getResponsiveClass(
+    id
+) {
+
+    const result = [];
+
+
+    const breakpoints = [
+        "sm",
+        "md",
+        "lg"
+    ];
+
+
+    for (
+        const bp of
+        breakpoints
+    ) {
+
+        const block =
+            layouts[bp].find(
+                b =>
+                    b.id === id
+            );
+
+
+        /*
+         * This should NEVER happen
+         * because every block is required
+         * to exist in all breakpoints.
+         */
+
+        if (!block) {
+
+            console.warn(
+                `Block ${id} missing from ${bp}`
+            );
+
+            continue;
+
+        }
+
+
+        result.push(
+
+            `${bp}:col-start-${block.colStart}`,
+
+            `${bp}:col-span-${block.colSpan}`,
+
+            `${bp}:row-start-${block.rowStart}`,
+
+            `${bp}:row-span-${block.rowSpan}`
+
+        );
+
+    }
+
+
+    return result.join(" ");
+
+}
+
+
+/*
+ * ---------------------------------------------------------
+ * GET ALL BLOCK IDS
+ * ---------------------------------------------------------
+ */
+
+function getAllBlockIds() {
+
+    return [
+
+        ...new Set([
+
+            ...layouts.sm.map(
+                b => b.id
+            ),
+
+            ...layouts.md.map(
+                b => b.id
+            ),
+
+            ...layouts.lg.map(
+                b => b.id
+            )
+
+        ])
+
+    ];
+
+}
+
+
+/*
+ * ---------------------------------------------------------
+ * SIDEBAR
+ * ---------------------------------------------------------
+ */
+
+function updateSidebar() {
+
+    const info =
+        document.getElementById(
+            "selectedInfo"
+        );
+
+
+    const code =
+        document.getElementById(
+            "generatedCode"
+        );
+
+
+    const list =
+        document.getElementById(
+            "blockList"
+        );
+
+
+    /*
+     * Selected block
+     */
+
+    const selected =
+        getCurrentLayout().find(
+            block =>
+                block.id ===
+                selectedId
+        );
+
+
+    if (selected) {
+
+        info.innerHTML = `
+
+            <div class="info-row">
+                <strong>
+                    ${escapeHtml(
+                        selected.name
+                    )}
+                </strong>
+            </div>
+
+            <div class="info-row">
+                Breakpoint:
+                <strong>
+                    ${currentBreakpoint.toUpperCase()}
+                </strong>
+            </div>
+
+            <br>
+
+            <div class="info-row">
+                Column:
+                ${selected.colStart}
+                →
+                ${
+                    selected.colStart +
+                    selected.colSpan -
+                    1
+                }
+            </div>
+
+            <div class="info-row">
+                Column Span:
+                ${selected.colSpan}
+            </div>
+
+            <br>
+
+            <div class="info-row">
+                Row:
+                ${selected.rowStart}
+                →
+                ${
+                    selected.rowStart +
+                    selected.rowSpan -
+                    1
+                }
+            </div>
+
+            <div class="info-row">
+                Row Span:
+                ${selected.rowSpan}
+            </div>
+
+            <br>
+
+            <div class="code">
+                ${escapeHtml(
+                    getTailwindClass(
+                        selected
+                    )
+                )}
+            </div>
+
+        `;
+
+    } else {
+
+        info.innerHTML =
+            "Nothing selected";
+
+    }
+
+
+    /*
+     * -----------------------------------------------------
+     * GENERATED RESPONSIVE HTML
+     * -----------------------------------------------------
+     */
+
+    const ids =
+        getAllBlockIds();
+
+
+    code.textContent =
+        ids.map(id => {
+
+            const block =
+                layouts.lg.find(
+                    b =>
+                        b.id === id
+                ) ||
+                layouts.md.find(
+                    b =>
+                        b.id === id
+                ) ||
+                layouts.sm.find(
+                    b =>
+                        b.id === id
+                );
+
+
+            if (!block) {
+
+                return "";
+
+            }
+
+
+            return `<div class="${getResponsiveClass(id)}">
+    ${block.name}
+</div>`;
+
+        })
+        .filter(Boolean)
+        .join("\n\n");
+
+
+    /*
+     * -----------------------------------------------------
+     * BLOCK LIST
+     * -----------------------------------------------------
+     */
+
+    list.innerHTML = "";
+
+
+    getCurrentLayout()
+        .forEach(block => {
+
+            const item =
+                document.createElement(
+                    "div"
+                );
+
+
+            item.className =
+                "block-item";
+
+
+            item.textContent =
+                `${block.name} — ${getTailwindClass(block)}`;
+
+
+            item.onclick =
+                () =>
+                    selectBlock(
+                        block.id
+                    );
+
+
+            list.appendChild(
+                item
+            );
+
+        });
+
+}
+
+
+/*
+ * ---------------------------------------------------------
+ * DELETE SELECTED
+ * ---------------------------------------------------------
+ *
+ * Delete from ALL breakpoints.
+ */
+
+function deleteSelected() {
+
+    if (
+        selectedId === null
+    ) {
+
+        return;
+
+    }
+
+
+    const id =
+        selectedId;
+
+
+    /*
+     * Remove the logical block
+     * everywhere.
+     */
+
+    for (
+        const bp of
+        ["sm", "md", "lg"]
+    ) {
+
+        layouts[bp] =
+            layouts[bp].filter(
+                block =>
+                    block.id !== id
+            );
+
+    }
+
+
+    /*
+     * Select another block.
+     */
+
+    const current =
+        getCurrentLayout();
+
+
+    selectedId =
+        current.length
+            ? current[
+                Math.max(
+                    0,
+                    current.length - 1
+                )
+            ].id
+            : null;
+
+
+    render();
+
+}
+
+
+/*
+ * ---------------------------------------------------------
+ * COPY CODE
+ * ---------------------------------------------------------
+ */
+
+async function copyCode() {
+
+    const code =
+        document.getElementById(
+            "generatedCode"
+        );
+
+
+    try {
+
+        await navigator.clipboard.writeText(
+            code.textContent
+        );
+
+
+        alert(
+            "Responsive Tailwind code copied!"
+        );
+
+    } catch (error) {
+
+        console.error(error);
+
+        alert(
+            "Could not copy to clipboard."
+        );
+
+    }
+
+}
+
+
+/*
+ * ---------------------------------------------------------
+ * RESET CURRENT BREAKPOINT
+ * ---------------------------------------------------------
+ */
+
+function resetCurrent() {
+
+    if (
+        !confirm(
+            `Reset ${currentBreakpoint.toUpperCase()} layout?`
+        )
+    ) {
+
+        return;
+
+    }
+
+
+    if (
+        currentBreakpoint ===
+        "lg"
+    ) {
+
+        layouts.lg =
+            structuredClone(
+                initialLG
+            );
+
+    } else {
+
+        layouts[
+            currentBreakpoint
+        ] =
+            structuredClone(
+                initialMobile
+            );
+
+    }
+
+
+    /*
+     * Make sure all logical blocks still exist.
+     */
+
+    synchronizeLayouts();
+
+
+    selectedId =
+        layouts[
+            currentBreakpoint
+        ][0]?.id ??
+        null;
+
+
+    render();
+
+}
+
+
+/*
+ * ---------------------------------------------------------
+ * SYNCHRONIZE LAYOUTS
+ * ---------------------------------------------------------
+ *
+ * Safety net.
+ *
+ * Every logical block must exist in:
+ *
+ * SM
+ * MD
+ * LG
+ *
+ * If something is missing, copy it from
+ * another breakpoint.
+ */
+
+function synchronizeLayouts() {
+
+    const allIds =
+        getAllBlockIds();
+
+
+    for (
+        const id of allIds
+    ) {
+
+        const source =
+            layouts.sm.find(
+                b =>
+                    b.id === id
+            ) ||
+            layouts.md.find(
+                b =>
+                    b.id === id
+            ) ||
+            layouts.lg.find(
+                b =>
+                    b.id === id
+            );
+
+
+        if (!source) {
+
+            continue;
+
+        }
+
+
+        for (
+            const bp of
+            ["sm", "md", "lg"]
+        ) {
+
+            const exists =
+                layouts[bp].some(
+                    b =>
+                        b.id === id
+                );
+
+
+            if (!exists) {
+
+                layouts[bp].push({
+
+                    ...structuredClone(
+                        source
+                    )
+
+                });
+
+            }
+
+        }
+
+    }
+
+}
+
+
+/*
+ * ---------------------------------------------------------
+ * ESCAPE HTML
+ * ---------------------------------------------------------
+ */
+
+function escapeHtml(
+    value
+) {
+
+    return String(value)
+        .replace(
+            /&/g,
+            "&amp;"
+        )
+        .replace(
+            /</g,
+            "&lt;"
+        )
+        .replace(
+            />/g,
+            "&gt;"
+        )
+        .replace(
+            /"/g,
+            "&quot;"
+        )
+        .replace(
+            /'/g,
+            "&#039;"
+        );
+
+}
+
+
+/*
+ * ---------------------------------------------------------
+ * INITIALIZE
+ * ---------------------------------------------------------
+ */
+
+synchronizeLayouts();
+
+switchBreakpoint("lg");
+
+</script>
+
+</body>
+</html>

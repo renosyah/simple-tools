@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Web Tools</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+
+            min-height: 100vh;
+
+            font-family:
+                Arial,
+                sans-serif;
+
+            background: #111827;
+
+            color: white;
+        }
+
+        .container {
+            max-width: 1200px;
+
+            margin: 0 auto;
+
+            padding: 40px 20px;
+        }
+
+        h1 {
+            margin-top: 0;
+
+            margin-bottom: 30px;
+        }
+
+        .tools-grid {
+            display: grid;
+
+            grid-template-columns:
+                repeat(
+                    auto-fill,
+                    minmax(
+                        240px,
+                        1fr
+                    )
+                );
+
+            gap: 20px;
+        }
+
+        .tool-card {
+            display: block;
+
+            text-decoration: none;
+
+            color: white;
+
+            background: #1f2937;
+
+            border: 1px solid #374151;
+
+            border-radius: 10px;
+
+            overflow: hidden;
+
+            transition:
+                transform .15s,
+                border-color .15s,
+                background .15s;
+        }
+
+        .tool-card:hover {
+            transform: translateY(-3px);
+
+            background: #273449;
+
+            border-color: #60a5fa;
+        }
+
+        .tool-image {
+            width: 100%;
+
+            aspect-ratio: 16 / 9;
+
+            object-fit: cover;
+
+            display: block;
+
+            background: #374151;
+        }
+
+        .tool-content {
+            padding: 16px;
+        }
+
+        .tool-title {
+            font-size: 18px;
+
+            font-weight: bold;
+
+            margin-bottom: 6px;
+        }
+
+        .tool-description {
+            color: #9ca3af;
+
+            font-size: 14px;
+
+            line-height: 1.5;
+        }
+    </style>
+</head>
+
+<body>
+
+    <main class="container">
+
+        <h1>
+            🛠️ Web Tools
+        </h1>
+
+
+        <div class="tools-grid">
+
+            <!-- Tailwind Grid Editor -->
+
+            <a
+                class="tool-card"
+                href="tools/tailwind_grid_editor.html"
+            >
+
+                <img
+                    class="tool-image"
+                    src="assets/tailwind-grid-editor.png"
+                    alt="Tailwind Grid Editor"
+                >
+
+                <div class="tool-content">
+
+                    <div class="tool-title">
+                        Tailwind Grid Editor
+                    </div>
+
+                    <div class="tool-description">
+                        Visual responsive grid editor
+                        for generating Tailwind CSS
+                        grid classes.
+                    </div>
+
+                </div>
+
+            </a>
+
+        </div>
+
+    </main>
+
+</body>
+
+</html>
