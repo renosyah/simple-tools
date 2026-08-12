@@ -1,0 +1,1900 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>JSON Formatter</title>
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+
+            min-height: 100vh;
+
+            font-family:
+                Arial,
+                sans-serif;
+
+            background: #111827;
+
+            color: white;
+        }
+
+
+        /* =====================================================
+           TOOLBAR
+        ===================================================== */
+
+        .toolbar {
+            min-height: 60px;
+
+            display: flex;
+
+            align-items: center;
+
+            gap: 10px;
+
+            padding: 10px 15px;
+
+            background: #1f2937;
+
+            border-bottom:
+                1px solid #374151;
+        }
+
+
+        .toolbar-title {
+            font-size: 18px;
+
+            font-weight: bold;
+        }
+
+
+        .toolbar-spacer {
+            flex: 1;
+        }
+
+
+        button {
+            padding:
+                8px 14px;
+
+            border: 0;
+
+            border-radius: 5px;
+
+            cursor: pointer;
+
+            background: #374151;
+
+            color: white;
+        }
+
+
+        button:hover {
+            background: #4b5563;
+        }
+
+
+        .primary {
+            background: #2563eb;
+        }
+
+
+        .primary:hover {
+            background: #1d4ed8;
+        }
+
+
+        .danger {
+            background: #7f1d1d;
+        }
+
+
+        .danger:hover {
+            background: #991b1b;
+        }
+
+
+        /* =====================================================
+           MAIN
+        ===================================================== */
+
+        .main {
+            height:
+                calc(100vh - 60px);
+
+            display: flex;
+
+            flex-direction: column;
+
+            padding: 20px;
+
+            gap: 15px;
+        }
+
+
+        /* =====================================================
+           INPUT / OUTPUT
+        ===================================================== */
+
+        .io-grid {
+            flex: 1;
+
+            min-height: 0;
+
+            display: grid;
+
+            grid-template-columns:
+                1fr
+                1fr;
+
+            gap: 15px;
+        }
+
+
+        .panel {
+            min-width: 0;
+
+            min-height: 0;
+
+            display: flex;
+
+            flex-direction: column;
+
+            background: #1f2937;
+
+            border:
+                1px solid #374151;
+
+            border-radius: 8px;
+
+            overflow: hidden;
+        }
+
+
+        .panel-header {
+            min-height: 42px;
+
+            display: flex;
+
+            align-items: center;
+
+            padding:
+                0 12px;
+
+            border-bottom:
+                1px solid #374151;
+
+            color: #d1d5db;
+
+            font-size: 13px;
+
+            font-weight: bold;
+        }
+
+
+        .panel-header-spacer {
+            flex: 1;
+        }
+
+
+        textarea {
+            flex: 1;
+
+            width: 100%;
+
+            resize: none;
+
+            border: 0;
+
+            outline: 0;
+
+            padding: 15px;
+
+            background: #111827;
+
+            color: #d1d5db;
+
+            font-family:
+                Consolas,
+                "Courier New",
+                monospace;
+
+            font-size: 13px;
+
+            line-height: 1.6;
+        }
+
+
+        textarea::placeholder {
+            color: #6b7280;
+        }
+
+
+        .output {
+            flex: 1;
+
+            overflow: auto;
+
+            padding: 15px;
+
+            background: #111827;
+
+            font-family:
+                Consolas,
+                "Courier New",
+                monospace;
+
+            font-size: 13px;
+
+            line-height: 1.6;
+
+            white-space: pre-wrap;
+
+            word-break: break-word;
+        }
+
+
+        /* =====================================================
+           STATUS
+        ===================================================== */
+
+        .status {
+            padding:
+                8px 12px;
+
+            font-size: 12px;
+
+            border-top:
+                1px solid #374151;
+        }
+
+
+        .status.valid {
+            color: #34d399;
+
+            background: #064e3b;
+        }
+
+
+        .status.invalid {
+            color: #fca5a5;
+
+            background: #450a0a;
+        }
+
+
+        .status.empty {
+            color: #9ca3af;
+
+            background: #111827;
+        }
+
+
+        /* =====================================================
+           LOWER SECTION
+        ===================================================== */
+
+        .lower {
+            height: 330px;
+
+            min-height: 250px;
+
+            display: flex;
+
+            flex-direction: column;
+
+            background: #1f2937;
+
+            border:
+                1px solid #374151;
+
+            border-radius: 8px;
+
+            overflow: hidden;
+        }
+
+
+        .tabs {
+            display: flex;
+
+            border-bottom:
+                1px solid #374151;
+
+            background: #1f2937;
+        }
+
+
+        .tab {
+            padding:
+                10px 16px;
+
+            background: transparent;
+
+            border-radius: 0;
+
+            color: #9ca3af;
+        }
+
+
+        .tab:hover {
+            background: #273449;
+        }
+
+
+        .tab.active {
+            color: white;
+
+            background: #374151;
+        }
+
+
+        .tab-content {
+            flex: 1;
+
+            min-height: 0;
+
+            overflow: auto;
+
+            padding: 15px;
+        }
+
+
+        /* =====================================================
+           TABLE
+        ===================================================== */
+
+        .table-wrapper {
+            width: 100%;
+
+            overflow: auto;
+        }
+
+
+        table {
+            width: 100%;
+
+            border-collapse: collapse;
+
+            font-size: 13px;
+        }
+
+
+        th,
+        td {
+            padding:
+                8px 10px;
+
+            text-align: left;
+
+            border-bottom:
+                1px solid #374151;
+
+            white-space: nowrap;
+        }
+
+
+        th {
+            position: sticky;
+
+            top: 0;
+
+            background: #374151;
+
+            color: #e5e7eb;
+        }
+
+
+        td {
+            color: #d1d5db;
+        }
+
+
+        tr:hover td {
+            background: #273449;
+        }
+
+
+        .null-value {
+            color: #6b7280;
+        }
+
+
+        /* =====================================================
+           CHART
+        ===================================================== */
+
+        .chart-controls {
+            display: flex;
+
+            gap: 10px;
+
+            margin-bottom: 15px;
+
+            flex-wrap: wrap;
+        }
+
+
+        .chart-control {
+            display: flex;
+
+            align-items: center;
+
+            gap: 6px;
+
+            font-size: 12px;
+
+            color: #9ca3af;
+        }
+
+
+        .chart-control select {
+            padding:
+                6px 8px;
+
+            border:
+                1px solid #4b5563;
+
+            border-radius: 5px;
+
+            background: #111827;
+
+            color: white;
+        }
+
+
+        .chart {
+            width: 100%;
+
+            height: 220px;
+
+            display: flex;
+
+            align-items: flex-end;
+
+            gap: 8px;
+
+            padding:
+                20px 10px 25px;
+
+            border:
+                1px solid #374151;
+
+            border-radius: 6px;
+
+            background: #111827;
+
+            overflow-x: auto;
+        }
+
+
+        .bar-container {
+            min-width: 45px;
+
+            height: 100%;
+
+            display: flex;
+
+            flex-direction: column;
+
+            justify-content: flex-end;
+
+            align-items: center;
+
+            gap: 4px;
+        }
+
+
+        .bar-value {
+            font-size: 10px;
+
+            color: #9ca3af;
+        }
+
+
+        .bar {
+            width: 28px;
+
+            min-height: 2px;
+
+            background: #3b82f6;
+
+            border-radius:
+                3px 3px 0 0;
+
+            transition:
+                height .2s;
+        }
+
+
+        .bar-label {
+            max-width: 60px;
+
+            overflow: hidden;
+
+            text-overflow: ellipsis;
+
+            white-space: nowrap;
+
+            font-size: 10px;
+
+            color: #9ca3af;
+        }
+
+
+        .empty-message {
+            height: 100%;
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: center;
+
+            color: #6b7280;
+
+            font-size: 13px;
+        }
+
+
+        /* =====================================================
+           RESPONSIVE
+        ===================================================== */
+
+        @media (max-width: 800px) {
+
+            .io-grid {
+                grid-template-columns:
+                    1fr;
+            }
+
+
+            .main {
+                height: auto;
+
+                min-height:
+                    calc(100vh - 60px);
+            }
+
+
+            .panel {
+                min-height: 300px;
+            }
+
+
+            .lower {
+                min-height: 350px;
+            }
+
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+
+<!-- =========================================================
+     TOOLBAR
+========================================================= -->
+
+<div class="toolbar">
+
+    <div class="toolbar-title">
+        🧾 JSON Formatter
+    </div>
+
+
+    <div class="toolbar-spacer"></div>
+
+
+    <button
+        onclick="loadExample()"
+    >
+        Example
+    </button>
+
+
+    <button
+        class="primary"
+        onclick="formatJSON()"
+    >
+        Format
+    </button>
+
+
+    <button
+        onclick="copyOutput()"
+    >
+        Copy
+    </button>
+
+
+    <button
+        class="danger"
+        onclick="clearAll()"
+    >
+        Clear
+    </button>
+
+</div>
+
+
+<!-- =========================================================
+     MAIN
+========================================================= -->
+
+<main class="main">
+
+
+    <!-- =====================================================
+         INPUT / OUTPUT
+    ====================================================== -->
+
+    <div class="io-grid">
+
+
+        <!-- INPUT -->
+
+        <div class="panel">
+
+            <div class="panel-header">
+
+                JSON Input
+
+                <div
+                    class="panel-header-spacer"
+                ></div>
+
+                <span>
+                    Paste JSON
+                </span>
+
+            </div>
+
+
+            <textarea
+                id="jsonInput"
+                spellcheck="false"
+                placeholder='Paste JSON here...
+
+Example:
+
+[
+    {
+        "name": "Reno",
+        "age": 30
+    }
+]'
+                oninput="validateJSON()"
+            ></textarea>
+
+
+            <div
+                id="status"
+                class="status empty"
+            >
+                Waiting for JSON...
+
+            </div>
+
+        </div>
+
+
+        <!-- OUTPUT -->
+
+        <div class="panel">
+
+            <div class="panel-header">
+
+                Formatted JSON
+
+            </div>
+
+
+            <div
+                id="jsonOutput"
+                class="output"
+            >
+                Formatted JSON will appear here.
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- =====================================================
+         LOWER
+    ====================================================== -->
+
+    <div class="lower">
+
+
+        <!-- TABS -->
+
+        <div class="tabs">
+
+            <button
+                id="tabTable"
+                class="tab active"
+                onclick="showTab('table')"
+            >
+                📋 Table
+            </button>
+
+
+            <button
+                id="tabChart"
+                class="tab"
+                onclick="showTab('chart')"
+            >
+                📊 Visualization
+            </button>
+
+        </div>
+
+
+        <!-- TABLE -->
+
+        <div
+            id="tableTab"
+            class="tab-content"
+        >
+
+            <div
+                id="tableContainer"
+            >
+
+                <div class="empty-message">
+                    Array/object data will appear here.
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- CHART -->
+
+        <div
+            id="chartTab"
+            class="tab-content"
+            style="display:none"
+        >
+
+            <div class="chart-controls">
+
+
+                <div class="chart-control">
+
+                    Chart:
+
+                    <select
+                        id="chartType"
+                        onchange="renderChart()"
+                    >
+
+                        <option value="auto">
+                            Auto
+                        </option>
+
+                        <option value="bar">
+                            Bar
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <div
+                    id="xControl"
+                    class="chart-control"
+                >
+
+                    X:
+
+                    <select
+                        id="xColumn"
+                        onchange="renderChart()"
+                    ></select>
+
+                </div>
+
+
+                <div
+                    id="yControl"
+                    class="chart-control"
+                >
+
+                    Y:
+
+                    <select
+                        id="yColumn"
+                        onchange="renderChart()"
+                    ></select>
+
+                </div>
+
+            </div>
+
+
+            <div
+                id="chartContainer"
+            >
+
+                <div class="empty-message">
+                    Numeric JSON data will be visualized here.
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</main>
+
+
+<script>
+
+/* =========================================================
+   STATE
+========================================================= */
+
+let currentData = null;
+
+let tableData = [];
+
+let columns = [];
+
+
+/* =========================================================
+   ELEMENTS
+========================================================= */
+
+const input =
+    document.getElementById(
+        "jsonInput"
+    );
+
+
+const output =
+    document.getElementById(
+        "jsonOutput"
+    );
+
+
+const status =
+    document.getElementById(
+        "status"
+    );
+
+
+/* =========================================================
+   VALIDATE
+========================================================= */
+
+function validateJSON() {
+
+    const text =
+        input.value.trim();
+
+
+    if (!text) {
+
+        status.className =
+            "status empty";
+
+        status.textContent =
+            "Waiting for JSON...";
+
+        currentData = null;
+
+        return;
+
+    }
+
+
+    try {
+
+        currentData =
+            JSON.parse(
+                text
+            );
+
+
+        status.className =
+            "status valid";
+
+        status.textContent =
+            "✓ Valid JSON";
+
+
+    } catch (error) {
+
+        status.className =
+            "status invalid";
+
+        status.textContent =
+            "✕ " +
+            error.message;
+
+        currentData = null;
+
+    }
+
+}
+
+
+/* =========================================================
+   FORMAT
+========================================================= */
+
+function formatJSON() {
+
+    const text =
+        input.value.trim();
+
+
+    if (!text) {
+
+        output.textContent =
+            "Nothing to format.";
+
+        return;
+
+    }
+
+
+    try {
+
+        const data =
+            JSON.parse(
+                text
+            );
+
+
+        currentData =
+            data;
+
+
+        output.textContent =
+            JSON.stringify(
+                data,
+                null,
+                4
+            );
+
+
+        status.className =
+            "status valid";
+
+        status.textContent =
+            "✓ Valid JSON";
+
+
+        generateTable(
+            data
+        );
+
+
+        prepareChart(
+            data
+        );
+
+
+    } catch (error) {
+
+        output.textContent =
+            "Invalid JSON\n\n" +
+            error.message;
+
+
+        status.className =
+            "status invalid";
+
+        status.textContent =
+            "✕ Invalid JSON";
+
+
+        clearResults();
+
+    }
+
+}
+
+
+/* =========================================================
+   GENERATE TABLE
+========================================================= */
+
+function generateTable(data) {
+
+    const container =
+        document.getElementById(
+            "tableContainer"
+        );
+
+
+    let rows = [];
+
+
+    /*
+     * Best case:
+     *
+     * [
+     *   {...},
+     *   {...}
+     * ]
+     */
+
+    if (
+        Array.isArray(data) &&
+        data.length > 0 &&
+        data.every(
+            item =>
+                item !== null &&
+                typeof item === "object" &&
+                !Array.isArray(item)
+        )
+    ) {
+
+        rows =
+            data;
+
+    }
+
+
+    /*
+     * Single object:
+     */
+
+    else if (
+        data !== null &&
+        typeof data === "object" &&
+        !Array.isArray(data)
+    ) {
+
+        rows = [
+            data
+        ];
+
+    }
+
+
+    else {
+
+        container.innerHTML = `
+            <div class="empty-message">
+                Table view requires object or array-of-object data.
+            </div>
+        `;
+
+        return;
+
+    }
+
+
+    /*
+     * Flatten columns
+     */
+
+    const flattened =
+        rows.map(
+            row =>
+                flattenObject(
+                    row
+                )
+        );
+
+
+    columns = [
+        ...new Set(
+            flattened.flatMap(
+                row =>
+                    Object.keys(row)
+            )
+        )
+    ];
+
+
+    tableData =
+        flattened;
+
+
+    if (!columns.length) {
+
+        container.innerHTML = `
+            <div class="empty-message">
+                No columns found.
+            </div>
+        `;
+
+        return;
+
+    }
+
+
+    let html = `
+        <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+    `;
+
+
+    columns.forEach(
+        column => {
+
+            html += `
+                <th>
+                    ${escapeHTML(column)}
+                </th>
+            `;
+
+        }
+    );
+
+
+    html += `
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+
+    flattened.forEach(
+        row => {
+
+            html += `
+                <tr>
+            `;
+
+
+            columns.forEach(
+                column => {
+
+                    const value =
+                        row[column];
+
+
+                    html += `
+                        <td>
+                            ${
+                                formatCell(
+                                    value
+                                )
+                            }
+                        </td>
+                    `;
+
+                }
+            );
+
+
+            html += `
+                </tr>
+            `;
+
+        }
+    );
+
+
+    html += `
+            </tbody>
+        </table>
+        </div>
+    `;
+
+
+    container.innerHTML =
+        html;
+
+}
+
+
+/* =========================================================
+   FLATTEN OBJECT
+========================================================= */
+
+function flattenObject(
+    object,
+    prefix = "",
+    result = {}
+) {
+
+    Object.entries(
+        object
+    ).forEach(
+        ([key, value]) => {
+
+            const path =
+                prefix
+                    ? `${prefix}.${key}`
+                    : key;
+
+
+            if (
+                value !== null &&
+                typeof value === "object" &&
+                !Array.isArray(value)
+            ) {
+
+                flattenObject(
+                    value,
+                    path,
+                    result
+                );
+
+            } else {
+
+                result[path] =
+                    value;
+
+            }
+
+        }
+    );
+
+
+    return result;
+
+}
+
+
+/* =========================================================
+   FORMAT CELL
+========================================================= */
+
+function formatCell(
+    value
+) {
+
+    if (
+        value === null ||
+        value === undefined
+    ) {
+
+        return `
+            <span class="null-value">
+                null
+            </span>
+        `;
+
+    }
+
+
+    if (
+        typeof value === "object"
+    ) {
+
+        return escapeHTML(
+            JSON.stringify(
+                value
+            )
+        );
+
+    }
+
+
+    return escapeHTML(
+        String(value)
+    );
+
+}
+
+
+/* =========================================================
+   CHART PREPARATION
+========================================================= */
+
+function prepareChart(data) {
+
+    let rows = [];
+
+
+    if (
+        Array.isArray(data) &&
+        data.every(
+            item =>
+                item !== null &&
+                typeof item === "object" &&
+                !Array.isArray(item)
+        )
+    ) {
+
+        rows =
+            data.map(
+                row =>
+                    flattenObject(
+                        row
+                    )
+            );
+
+    }
+
+
+    if (!rows.length) {
+
+        clearChart();
+
+        return;
+
+    }
+
+
+    columns = [
+        ...new Set(
+            rows.flatMap(
+                row =>
+                    Object.keys(row)
+            )
+        )
+    ];
+
+
+    const xSelect =
+        document.getElementById(
+            "xColumn"
+        );
+
+
+    const ySelect =
+        document.getElementById(
+            "yColumn"
+        );
+
+
+    xSelect.innerHTML =
+        "";
+
+
+    ySelect.innerHTML =
+        "";
+
+
+    columns.forEach(
+        column => {
+
+            xSelect.innerHTML += `
+                <option value="${escapeAttribute(column)}">
+                    ${escapeHTML(column)}
+                </option>
+            `;
+
+
+            ySelect.innerHTML += `
+                <option value="${escapeAttribute(column)}">
+                    ${escapeHTML(column)}
+                </option>
+            `;
+
+        }
+    );
+
+
+    /*
+     * Automatically select:
+     *
+     * X = first non-numeric
+     * Y = first numeric
+     */
+
+    const numericColumns =
+        columns.filter(
+            column =>
+                rows.some(
+                    row =>
+                        typeof row[column] ===
+                        "number"
+                )
+        );
+
+
+    const textColumns =
+        columns.filter(
+            column =>
+                rows.some(
+                    row =>
+                        typeof row[column] !==
+                        "number"
+                )
+        );
+
+
+    if (
+        textColumns.length
+    ) {
+
+        xSelect.value =
+            textColumns[0];
+
+    }
+
+
+    if (
+        numericColumns.length
+    ) {
+
+        ySelect.value =
+            numericColumns[0];
+
+    }
+
+
+    renderChart();
+
+}
+
+
+/* =========================================================
+   RENDER CHART
+========================================================= */
+
+function renderChart() {
+
+    if (!tableData.length) {
+
+        clearChart();
+
+        return;
+
+    }
+
+
+    const xColumn =
+        document.getElementById(
+            "xColumn"
+        ).value;
+
+
+    const yColumn =
+        document.getElementById(
+            "yColumn"
+        ).value;
+
+
+    const chart =
+        document.getElementById(
+            "chartContainer"
+        );
+
+
+    const values =
+        tableData
+            .map(
+                row => ({
+                    label:
+                        row[xColumn],
+                    value:
+                        Number(
+                            row[yColumn]
+                        )
+                })
+            )
+            .filter(
+                item =>
+                    Number.isFinite(
+                        item.value
+                    )
+            );
+
+
+    if (!values.length) {
+
+        chart.innerHTML = `
+            <div class="empty-message">
+                No numeric values available for visualization.
+            </div>
+        `;
+
+        return;
+
+    }
+
+
+    const max =
+        Math.max(
+            ...values.map(
+                item =>
+                    item.value
+            )
+        );
+
+
+    const min =
+        Math.min(
+            ...values.map(
+                item =>
+                    item.value
+            )
+        );
+
+
+    const range =
+        max - min || 1;
+
+
+    let html =
+        `<div class="chart">`;
+
+
+    values.forEach(
+        item => {
+
+            const height =
+                Math.max(
+                    2,
+                    (
+                        (
+                            item.value -
+                            Math.min(
+                                0,
+                                min
+                            )
+                        ) /
+                        (
+                            max -
+                            Math.min(
+                                0,
+                                min
+                            ) || 1
+                        )
+                    ) *
+                    100
+                );
+
+
+            html += `
+
+                <div
+                    class="bar-container"
+                >
+
+                    <div
+                        class="bar-value"
+                    >
+                        ${escapeHTML(
+                            String(
+                                item.value
+                            )
+                        )}
+                    </div>
+
+                    <div
+                        class="bar"
+                        style="
+                            height:${height}%
+                        "
+                        title="${escapeAttribute(
+                            String(
+                                item.value
+                            )
+                        )}"
+                    ></div>
+
+                    <div
+                        class="bar-label"
+                        title="${escapeAttribute(
+                            String(
+                                item.label
+                            )
+                        )}"
+                    >
+                        ${escapeHTML(
+                            String(
+                                item.label
+                            )
+                        )}
+                    </div>
+
+                </div>
+
+            `;
+
+        }
+    );
+
+
+    html += `
+        </div>
+    `;
+
+
+    chart.innerHTML =
+        html;
+
+}
+
+
+/* =========================================================
+   TABS
+========================================================= */
+
+function showTab(
+    tab
+) {
+
+    const table =
+        document.getElementById(
+            "tableTab"
+        );
+
+
+    const chart =
+        document.getElementById(
+            "chartTab"
+        );
+
+
+    const tableButton =
+        document.getElementById(
+            "tabTable"
+        );
+
+
+    const chartButton =
+        document.getElementById(
+            "tabChart"
+        );
+
+
+    if (
+        tab === "table"
+    ) {
+
+        table.style.display =
+            "block";
+
+        chart.style.display =
+            "none";
+
+        tableButton.classList.add(
+            "active"
+        );
+
+        chartButton.classList.remove(
+            "active"
+        );
+
+    } else {
+
+        table.style.display =
+            "none";
+
+        chart.style.display =
+            "block";
+
+        tableButton.classList.remove(
+            "active"
+        );
+
+        chartButton.classList.add(
+            "active"
+        );
+
+        renderChart();
+
+    }
+
+}
+
+
+/* =========================================================
+   COPY
+========================================================= */
+
+async function copyOutput() {
+
+    if (
+        !currentData
+    ) {
+
+        return;
+
+    }
+
+
+    const text =
+        JSON.stringify(
+            currentData,
+            null,
+            4
+        );
+
+
+    try {
+
+        await navigator
+            .clipboard
+            .writeText(
+                text
+            );
+
+
+    } catch (error) {
+
+        console.error(
+            error
+        );
+
+    }
+
+}
+
+
+/* =========================================================
+   CLEAR
+========================================================= */
+
+function clearAll() {
+
+    input.value = "";
+
+    output.textContent =
+        "Formatted JSON will appear here.";
+
+
+    status.className =
+        "status empty";
+
+    status.textContent =
+        "Waiting for JSON...";
+
+
+    clearResults();
+
+}
+
+
+function clearResults() {
+
+    currentData = null;
+
+    tableData = [];
+
+    columns = [];
+
+
+    document.getElementById(
+        "tableContainer"
+    ).innerHTML = `
+        <div class="empty-message">
+            Array/object data will appear here.
+        </div>
+    `;
+
+
+    clearChart();
+
+}
+
+
+function clearChart() {
+
+    document.getElementById(
+        "chartContainer"
+    ).innerHTML = `
+        <div class="empty-message">
+            Numeric JSON data will be visualized here.
+        </div>
+    `;
+
+}
+
+
+/* =========================================================
+   EXAMPLE
+========================================================= */
+
+function loadExample() {
+
+    input.value =
+`[
+    {
+        "name": "Reno",
+        "age": 30,
+        "score": 85,
+        "department": "Engineering"
+    },
+    {
+        "name": "Alice",
+        "age": 28,
+        "score": 92,
+        "department": "Design"
+    },
+    {
+        "name": "Bob",
+        "age": 34,
+        "score": 76,
+        "department": "Engineering"
+    },
+    {
+        "name": "Charlie",
+        "age": 26,
+        "score": 88,
+        "department": "Marketing"
+    }
+]`;
+
+
+    formatJSON();
+
+}
+
+
+/* =========================================================
+   ESCAPE HTML
+========================================================= */
+
+function escapeHTML(
+    value
+) {
+
+    return String(
+        value
+    )
+        .replace(
+            /&/g,
+            "&amp;"
+        )
+        .replace(
+            /</g,
+            "&lt;"
+        )
+        .replace(
+            />/g,
+            "&gt;"
+        )
+        .replace(
+            /"/g,
+            "&quot;"
+        )
+        .replace(
+            /'/g,
+            "&#039;"
+        );
+
+}
+
+
+function escapeAttribute(
+    value
+) {
+
+    return escapeHTML(
+        value
+    );
+
+}
+
+
+/* =========================================================
+   INITIALIZE
+========================================================= */
+
+validateJSON();
+
+</script>
+
+</body>
+
+</html>

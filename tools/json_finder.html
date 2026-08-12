@@ -1,0 +1,2707 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>JSON Explorer</title>
+
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+        }
+
+
+        body {
+
+            margin: 0;
+
+            min-height: 100vh;
+
+            font-family:
+                Arial,
+                sans-serif;
+
+            background: #111827;
+
+            color: white;
+
+        }
+
+
+        /* =====================================================
+           TOOLBAR
+        ===================================================== */
+
+        .toolbar {
+
+            min-height: 60px;
+
+            display: flex;
+
+            align-items: center;
+
+            gap: 10px;
+
+            padding: 10px 15px;
+
+            background: #1f2937;
+
+            border-bottom:
+                1px solid #374151;
+
+        }
+
+
+        .toolbar-title {
+
+            font-size: 18px;
+
+            font-weight: bold;
+
+        }
+
+
+        .toolbar-spacer {
+
+            flex: 1;
+
+        }
+
+
+        button {
+
+            padding:
+                8px 14px;
+
+            border: 0;
+
+            border-radius: 5px;
+
+            cursor: pointer;
+
+            background: #374151;
+
+            color: white;
+
+        }
+
+
+        button:hover {
+
+            background: #4b5563;
+
+        }
+
+
+        button.primary {
+
+            background: #2563eb;
+
+        }
+
+
+        button.primary:hover {
+
+            background: #1d4ed8;
+
+        }
+
+
+        button.danger {
+
+            background: #7f1d1d;
+
+        }
+
+
+        button.danger:hover {
+
+            background: #991b1b;
+
+        }
+
+
+        /* =====================================================
+           MAIN
+        ===================================================== */
+
+        .main {
+
+            height:
+                calc(100vh - 60px);
+
+            display: flex;
+
+            flex-direction: column;
+
+            padding: 15px;
+
+            gap: 15px;
+
+        }
+
+
+        /* =====================================================
+           INPUT
+        ===================================================== */
+
+        .input-panel {
+
+            height: 180px;
+
+            min-height: 120px;
+
+            display: flex;
+
+            flex-direction: column;
+
+            background: #1f2937;
+
+            border:
+                1px solid #374151;
+
+            border-radius: 8px;
+
+            overflow: hidden;
+
+        }
+
+
+        .panel-header {
+
+            min-height: 40px;
+
+            display: flex;
+
+            align-items: center;
+
+            gap: 10px;
+
+            padding:
+                0 12px;
+
+            border-bottom:
+                1px solid #374151;
+
+            color: #d1d5db;
+
+            font-size: 13px;
+
+            font-weight: bold;
+
+        }
+
+
+        .panel-header-spacer {
+
+            flex: 1;
+
+        }
+
+
+        textarea {
+
+            flex: 1;
+
+            width: 100%;
+
+            resize: none;
+
+            border: 0;
+
+            outline: 0;
+
+            padding: 12px;
+
+            background: #111827;
+
+            color: #d1d5db;
+
+            font-family:
+                Consolas,
+                "Courier New",
+                monospace;
+
+            font-size: 12px;
+
+            line-height: 1.5;
+
+        }
+
+
+        textarea::placeholder {
+
+            color: #6b7280;
+
+        }
+
+
+        .status {
+
+            padding:
+                7px 12px;
+
+            font-size: 11px;
+
+            border-top:
+                1px solid #374151;
+
+            color: #9ca3af;
+
+            background: #111827;
+
+        }
+
+
+        .status.valid {
+
+            color: #34d399;
+
+            background: #064e3b;
+
+        }
+
+
+        .status.invalid {
+
+            color: #fca5a5;
+
+            background: #450a0a;
+
+        }
+
+
+        /* =====================================================
+           SEARCH
+        ===================================================== */
+
+        .search-panel {
+
+            display: flex;
+
+            align-items: center;
+
+            gap: 10px;
+
+            padding: 10px;
+
+            background: #1f2937;
+
+            border:
+                1px solid #374151;
+
+            border-radius: 8px;
+
+        }
+
+
+        .search-icon {
+
+            color: #9ca3af;
+
+            font-size: 16px;
+
+        }
+
+
+        .search-input {
+
+            flex: 1;
+
+            padding: 8px 10px;
+
+            border:
+                1px solid #4b5563;
+
+            border-radius: 5px;
+
+            outline: none;
+
+            background: #111827;
+
+            color: white;
+
+        }
+
+
+        .search-input:focus {
+
+            border-color: #60a5fa;
+
+        }
+
+
+        .search-count {
+
+            color: #9ca3af;
+
+            font-size: 12px;
+
+            white-space: nowrap;
+
+        }
+
+
+        /* =====================================================
+           EXPLORER
+        ===================================================== */
+
+        .explorer {
+
+            flex: 1;
+
+            min-height: 0;
+
+            display: grid;
+
+            grid-template-columns:
+                380px
+                minmax(0, 1fr);
+
+            gap: 15px;
+
+        }
+
+
+        .panel {
+
+            min-width: 0;
+
+            min-height: 0;
+
+            display: flex;
+
+            flex-direction: column;
+
+            background: #1f2937;
+
+            border:
+                1px solid #374151;
+
+            border-radius: 8px;
+
+            overflow: hidden;
+
+        }
+
+
+        /* =====================================================
+           TREE
+        ===================================================== */
+
+        .tree {
+
+            flex: 1;
+
+            overflow: auto;
+
+            padding: 10px;
+
+            background: #111827;
+
+            font-family:
+                Consolas,
+                "Courier New",
+                monospace;
+
+            font-size: 12px;
+
+        }
+
+
+        .tree-empty {
+
+            padding: 30px 10px;
+
+            text-align: center;
+
+            color: #6b7280;
+
+        }
+
+
+        .tree-node {
+
+            user-select: none;
+
+        }
+
+
+        .tree-row {
+
+            min-height: 28px;
+
+            display: flex;
+
+            align-items: center;
+
+            gap: 5px;
+
+            padding:
+                3px 6px;
+
+            border-radius: 4px;
+
+            cursor: pointer;
+
+        }
+
+
+        .tree-row:hover {
+
+            background: #273449;
+
+        }
+
+
+        .tree-row.selected {
+
+            background: #1d4ed8;
+
+        }
+
+
+        .tree-row.search-match {
+
+            outline:
+                1px solid #f59e0b;
+
+        }
+
+
+        .tree-toggle {
+
+            width: 16px;
+
+            color: #9ca3af;
+
+            text-align: center;
+
+            flex-shrink: 0;
+
+        }
+
+
+        .tree-key {
+
+            color: #93c5fd;
+
+        }
+
+
+        .tree-index {
+
+            color: #a78bfa;
+
+        }
+
+
+        .tree-value {
+
+            color: #d1d5db;
+
+            overflow: hidden;
+
+            text-overflow: ellipsis;
+
+            white-space: nowrap;
+
+        }
+
+
+        .tree-type {
+
+            color: #6b7280;
+
+            font-size: 10px;
+
+        }
+
+
+        .tree-children {
+
+            margin-left: 17px;
+
+        }
+
+
+        .type-string {
+
+            color: #34d399;
+
+        }
+
+
+        .type-number {
+
+            color: #fbbf24;
+
+        }
+
+
+        .type-boolean {
+
+            color: #f472b6;
+
+        }
+
+
+        .type-null {
+
+            color: #6b7280;
+
+        }
+
+
+        /* =====================================================
+           INSPECTOR
+        ===================================================== */
+
+        .inspector {
+
+            flex: 1;
+
+            min-height: 0;
+
+            overflow: auto;
+
+            padding: 15px;
+
+            background: #111827;
+
+        }
+
+
+        .inspector-empty {
+
+            height: 100%;
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: center;
+
+            color: #6b7280;
+
+            text-align: center;
+
+        }
+
+
+        .field-title {
+
+            margin-bottom: 15px;
+
+            font-size: 18px;
+
+            font-weight: bold;
+
+        }
+
+
+        .field-path {
+
+            margin-bottom: 20px;
+
+            padding: 10px;
+
+            background: #1f2937;
+
+            border:
+                1px solid #374151;
+
+            border-radius: 5px;
+
+            font-family:
+                Consolas,
+                monospace;
+
+            font-size: 12px;
+
+            color: #93c5fd;
+
+            word-break: break-all;
+
+        }
+
+
+        .info-grid {
+
+            display: grid;
+
+            grid-template-columns:
+                120px
+                minmax(0, 1fr);
+
+            gap: 1px;
+
+            background: #374151;
+
+            border:
+                1px solid #374151;
+
+            border-radius: 5px;
+
+            overflow: hidden;
+
+        }
+
+
+        .info-label {
+
+            padding: 10px;
+
+            background: #1f2937;
+
+            color: #9ca3af;
+
+            font-size: 12px;
+
+        }
+
+
+        .info-value {
+
+            min-width: 0;
+
+            padding: 10px;
+
+            background: #111827;
+
+            color: #d1d5db;
+
+            font-family:
+                Consolas,
+                monospace;
+
+            font-size: 12px;
+
+            word-break: break-word;
+
+        }
+
+
+        .value-box {
+
+            margin-top: 15px;
+
+        }
+
+
+        .value-box-title {
+
+            margin-bottom: 7px;
+
+            color: #9ca3af;
+
+            font-size: 12px;
+
+        }
+
+
+        .raw-value {
+
+            max-height: 300px;
+
+            overflow: auto;
+
+            padding: 12px;
+
+            background: #1f2937;
+
+            border:
+                1px solid #374151;
+
+            border-radius: 5px;
+
+            font-family:
+                Consolas,
+                monospace;
+
+            font-size: 12px;
+
+            line-height: 1.5;
+
+            white-space: pre-wrap;
+
+            word-break: break-word;
+
+        }
+
+
+        .inspector-buttons {
+
+            display: flex;
+
+            gap: 8px;
+
+            margin-top: 10px;
+
+        }
+
+
+        /* =====================================================
+           TABLE
+        ===================================================== */
+
+        .table-section {
+
+            height: 260px;
+
+            min-height: 180px;
+
+        }
+
+
+        .table-wrapper {
+
+            flex: 1;
+
+            overflow: auto;
+
+            background: #111827;
+
+        }
+
+
+        table {
+
+            width: 100%;
+
+            border-collapse: collapse;
+
+            font-size: 12px;
+
+        }
+
+
+        th,
+        td {
+
+            padding:
+                8px 10px;
+
+            text-align: left;
+
+            border-bottom:
+                1px solid #374151;
+
+            white-space: nowrap;
+
+        }
+
+
+        th {
+
+            position: sticky;
+
+            top: 0;
+
+            background: #374151;
+
+            color: #e5e7eb;
+
+        }
+
+
+        td {
+
+            color: #d1d5db;
+
+        }
+
+
+        tbody tr {
+
+            cursor: pointer;
+
+        }
+
+
+        tbody tr:hover td {
+
+            background: #273449;
+
+        }
+
+
+        .empty-message {
+
+            height: 100%;
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: center;
+
+            color: #6b7280;
+
+            font-size: 12px;
+
+            padding: 20px;
+
+            text-align: center;
+
+        }
+
+
+        /* =====================================================
+           RESPONSIVE
+        ===================================================== */
+
+        @media (
+            max-width: 900px
+        ) {
+
+            .main {
+
+                height: auto;
+
+                min-height:
+                    calc(100vh - 60px);
+
+            }
+
+
+            .explorer {
+
+                grid-template-columns:
+                    1fr;
+
+                min-height: 700px;
+
+            }
+
+
+            .input-panel {
+
+                height: 220px;
+
+            }
+
+
+            .table-section {
+
+                height: 300px;
+
+            }
+
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+
+<!-- =========================================================
+     TOOLBAR
+========================================================= -->
+
+<div class="toolbar">
+
+    <div class="toolbar-title">
+
+        🧾 JSON Explorer
+
+    </div>
+
+
+    <div class="toolbar-spacer"></div>
+
+
+    <button
+        onclick="loadExample()"
+    >
+        Example
+    </button>
+
+
+    <button
+        class="primary"
+        onclick="parseJSON()"
+    >
+        Explore
+    </button>
+
+
+    <button
+        onclick="copyFormatted()"
+    >
+        Copy JSON
+    </button>
+
+
+    <button
+        class="danger"
+        onclick="clearAll()"
+    >
+        Clear
+    </button>
+
+</div>
+
+
+<!-- =========================================================
+     MAIN
+========================================================= -->
+
+<main class="main">
+
+
+    <!-- =====================================================
+         INPUT
+    ====================================================== -->
+
+    <section class="input-panel">
+
+        <div class="panel-header">
+
+            JSON Input
+
+            <div class="panel-header-spacer"></div>
+
+            Paste your JSON response here
+
+        </div>
+
+
+        <textarea
+            id="jsonInput"
+            spellcheck="false"
+            placeholder='Paste large JSON here...
+
+{
+    "response": {
+        "data": [...]
+    }
+}'
+        ></textarea>
+
+
+        <div
+            id="status"
+            class="status"
+        >
+
+            Waiting for JSON...
+
+        </div>
+
+    </section>
+
+
+    <!-- =====================================================
+         SEARCH
+    ====================================================== -->
+
+    <section class="search-panel">
+
+        <div class="search-icon">
+
+            🔎
+
+        </div>
+
+
+        <input
+            id="searchInput"
+            class="search-input"
+            type="text"
+            placeholder="Search field name, value, or path..."
+            oninput="searchTree()"
+        >
+
+
+        <div
+            id="searchCount"
+            class="search-count"
+        >
+
+            0 matches
+
+        </div>
+
+    </section>
+
+
+    <!-- =====================================================
+         EXPLORER
+    ====================================================== -->
+
+    <section class="explorer">
+
+
+        <!-- =================================================
+             TREE
+        ================================================== -->
+
+        <div class="panel">
+
+            <div class="panel-header">
+
+                🌳 Structure
+
+            </div>
+
+
+            <div
+                id="tree"
+                class="tree"
+            >
+
+                <div class="tree-empty">
+
+                    Paste JSON and click
+                    <b>Explore</b>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- =================================================
+             INSPECTOR
+        ================================================== -->
+
+        <div class="panel">
+
+            <div class="panel-header">
+
+                🔬 Field Inspector
+
+            </div>
+
+
+            <div
+                id="inspector"
+                class="inspector"
+            >
+
+                <div class="inspector-empty">
+
+                    Select a field from the JSON tree.
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <!-- =====================================================
+         TABLE
+    ====================================================== -->
+
+    <section class="panel table-section">
+
+        <div class="panel-header">
+
+            📋 Array / Object Table
+
+        </div>
+
+
+        <div
+            id="tableContainer"
+            class="table-wrapper"
+        >
+
+            <div class="empty-message">
+
+                Select an array or object to inspect it as a table.
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+</main>
+
+
+<script>
+
+/* =========================================================
+   STATE
+========================================================= */
+
+let rootData = null;
+
+let selectedNode = null;
+
+let selectedPath = "$";
+
+
+/* =========================================================
+   ELEMENTS
+========================================================= */
+
+const input =
+    document.getElementById(
+        "jsonInput"
+    );
+
+
+const tree =
+    document.getElementById(
+        "tree"
+    );
+
+
+const inspector =
+    document.getElementById(
+        "inspector"
+    );
+
+
+const status =
+    document.getElementById(
+        "status"
+    );
+
+
+/* =========================================================
+   PARSE JSON
+========================================================= */
+
+function parseJSON() {
+
+    const text =
+        input.value.trim();
+
+
+    if (!text) {
+
+        status.className =
+            "status invalid";
+
+        status.textContent =
+            "✕ No JSON provided.";
+
+        return;
+
+    }
+
+
+    try {
+
+        rootData =
+            JSON.parse(
+                text
+            );
+
+
+        status.className =
+            "status valid";
+
+        status.textContent =
+            "✓ Valid JSON — ready to explore";
+
+
+        renderTree();
+
+        selectNode(
+            rootData,
+            "$",
+            "root"
+        );
+
+    } catch (error) {
+
+        rootData = null;
+
+        tree.innerHTML = `
+            <div class="tree-empty">
+                Invalid JSON
+                <br><br>
+                ${escapeHTML(
+                    error.message
+                )}
+            </div>
+        `;
+
+
+        inspector.innerHTML = `
+            <div class="inspector-empty">
+                Unable to parse JSON.
+            </div>
+        `;
+
+
+        status.className =
+            "status invalid";
+
+        status.textContent =
+            "✕ " +
+            error.message;
+
+    }
+
+}
+
+
+/* =========================================================
+   RENDER TREE
+========================================================= */
+
+function renderTree() {
+
+    tree.innerHTML = "";
+
+
+    if (
+        rootData === null
+    ) {
+
+        return;
+
+    }
+
+
+    const root =
+        createTreeNode(
+            "root",
+            rootData,
+            "$",
+            true
+        );
+
+
+    tree.appendChild(
+        root
+    );
+
+}
+
+
+/* =========================================================
+   CREATE TREE NODE
+========================================================= */
+
+function createTreeNode(
+    key,
+    value,
+    path,
+    expanded = false
+) {
+
+    const wrapper =
+        document.createElement(
+            "div"
+        );
+
+
+    wrapper.className =
+        "tree-node";
+
+
+    const row =
+        document.createElement(
+            "div"
+        );
+
+
+    row.className =
+        "tree-row";
+
+
+    row.dataset.path =
+        path;
+
+
+    const isObject =
+        value !== null &&
+        typeof value === "object";
+
+
+    const children =
+        isObject
+            ? Object.entries(
+                value
+            )
+            : [];
+
+
+    const hasChildren =
+        children.length > 0;
+
+
+    const toggle =
+        document.createElement(
+            "span"
+        );
+
+
+    toggle.className =
+        "tree-toggle";
+
+
+    toggle.textContent =
+        hasChildren
+            ? expanded
+                ? "▼"
+                : "▶"
+            : "";
+
+
+    const keyElement =
+        document.createElement(
+            "span"
+        );
+
+
+    if (key === "root") {
+
+        keyElement.textContent =
+            getTypeLabel(
+                value
+            );
+
+        keyElement.className =
+            "tree-key";
+
+    } else {
+
+        keyElement.textContent =
+            Array.isArray(
+                value
+            )
+                ? `[${key}]`
+                : key;
+
+        keyElement.className =
+            Array.isArray(
+                value
+            )
+                ? "tree-index"
+                : "tree-key";
+
+    }
+
+
+    const type =
+        document.createElement(
+            "span"
+        );
+
+
+    type.className =
+        "tree-type";
+
+
+    type.textContent =
+        getTypeLabel(
+            value
+        );
+
+
+    row.appendChild(
+        toggle
+    );
+
+
+    row.appendChild(
+        keyElement
+    );
+
+
+    if (
+        !hasChildren
+    ) {
+
+        const valueElement =
+            document.createElement(
+                "span"
+            );
+
+
+        valueElement.className =
+            "tree-value " +
+            getValueClass(
+                value
+            );
+
+
+        valueElement.textContent =
+            formatShortValue(
+                value
+            );
+
+
+        row.appendChild(
+            valueElement
+        );
+
+    } else {
+
+        row.appendChild(
+            type
+        );
+
+    }
+
+
+    row.onclick =
+        event => {
+
+            event.stopPropagation();
+
+
+            selectNode(
+                value,
+                path,
+                key
+            );
+
+
+            if (
+                hasChildren
+            ) {
+
+                childrenContainer
+                    .classList.toggle(
+                        "hidden"
+                    );
+
+
+                toggle.textContent =
+                    childrenContainer
+                        .classList.contains(
+                            "hidden"
+                        )
+                        ? "▶"
+                        : "▼";
+
+            }
+
+        };
+
+
+    wrapper.appendChild(
+        row
+    );
+
+
+    if (
+        hasChildren
+    ) {
+
+        const childrenContainer =
+            document.createElement(
+                "div"
+            );
+
+
+        childrenContainer.className =
+            "tree-children";
+
+
+        if (
+            !expanded
+        ) {
+
+            childrenContainer.classList.add(
+                "hidden"
+            );
+
+        }
+
+
+        children.forEach(
+            ([childKey, childValue]) => {
+
+                const childPath =
+                    Array.isArray(
+                        value
+                    )
+                        ? `${path}[${childKey}]`
+                        : `${path}.${childKey}`;
+
+
+                childrenContainer.appendChild(
+
+                    createTreeNode(
+                        childKey,
+                        childValue,
+                        childPath,
+                        false
+                    )
+
+                );
+
+            }
+        );
+
+
+        wrapper.appendChild(
+            childrenContainer
+        );
+
+    }
+
+
+    return wrapper;
+
+}
+
+
+/* =========================================================
+   SELECT NODE
+========================================================= */
+
+function selectNode(
+    value,
+    path,
+    key
+) {
+
+    selectedNode =
+        value;
+
+    selectedPath =
+        path;
+
+
+    document
+        .querySelectorAll(
+            ".tree-row.selected"
+        )
+        .forEach(
+            row =>
+                row.classList.remove(
+                    "selected"
+                )
+        );
+
+
+    const row =
+        document.querySelector(
+            `.tree-row[data-path="${cssEscape(
+                path
+            )}"]`
+        );
+
+
+    if (row) {
+
+        row.classList.add(
+            "selected"
+        );
+
+    }
+
+
+    renderInspector(
+        value,
+        path,
+        key
+    );
+
+
+    if (
+        value !== null &&
+        typeof value === "object"
+    ) {
+
+        renderTable(
+            value
+        );
+
+    } else {
+
+        document.getElementById(
+            "tableContainer"
+        ).innerHTML = `
+            <div class="empty-message">
+                Select an object or array to view it as a table.
+            </div>
+        `;
+
+    }
+
+}
+
+
+/* =========================================================
+   INSPECTOR
+========================================================= */
+
+function renderInspector(
+    value,
+    path,
+    key
+) {
+
+    const type =
+        getTypeLabel(
+            value
+        );
+
+
+    let serialized;
+
+
+    try {
+
+        serialized =
+            JSON.stringify(
+                value,
+                null,
+                4
+            );
+
+    } catch {
+
+        serialized =
+            String(
+                value
+            );
+
+    }
+
+
+    inspector.innerHTML = `
+
+        <div class="field-title">
+
+            ${escapeHTML(
+                key === "root"
+                    ? "Root"
+                    : String(key)
+            )}
+
+        </div>
+
+
+        <div class="field-path">
+
+            ${escapeHTML(
+                path
+            )}
+
+        </div>
+
+
+        <div class="info-grid">
+
+            <div class="info-label">
+                Type
+            </div>
+
+            <div class="info-value">
+                ${escapeHTML(
+                    type
+                )}
+            </div>
+
+
+            <div class="info-label">
+                Value
+            </div>
+
+            <div class="info-value">
+                ${escapeHTML(
+                    getSummary(
+                        value
+                    )
+                )}
+            </div>
+
+
+            ${
+                Array.isArray(
+                    value
+                )
+                    ? `
+                        <div class="info-label">
+                            Length
+                        </div>
+
+                        <div class="info-value">
+                            ${value.length}
+                        </div>
+                    `
+                    : ""
+            }
+
+        </div>
+
+
+        <div class="value-box">
+
+            <div class="value-box-title">
+
+                Raw Value
+
+            </div>
+
+
+            <div class="raw-value">
+
+                ${escapeHTML(
+                    serialized
+                )}
+
+            </div>
+
+
+            <div class="inspector-buttons">
+
+                <button
+                    onclick="copyPath()"
+                >
+                    📍 Copy Path
+                </button>
+
+
+                <button
+                    onclick="copyValue()"
+                >
+                    📋 Copy Value
+                </button>
+
+            </div>
+
+        </div>
+
+    `;
+
+}
+
+
+/* =========================================================
+   TABLE
+========================================================= */
+
+function renderTable(
+    value
+) {
+
+    const container =
+        document.getElementById(
+            "tableContainer"
+        );
+
+
+    let rows = [];
+
+
+    if (
+        Array.isArray(
+            value
+        )
+    ) {
+
+        if (
+            value.length === 0
+        ) {
+
+            container.innerHTML = `
+                <div class="empty-message">
+                    Empty array.
+                </div>
+            `;
+
+            return;
+
+        }
+
+
+        if (
+            value.every(
+                item =>
+                    item !== null &&
+                    typeof item === "object" &&
+                    !Array.isArray(item)
+            )
+        ) {
+
+            rows =
+                value.map(
+                    flattenObject
+                );
+
+        } else {
+
+            rows =
+                value.map(
+                    item => ({
+                        value: item
+                    })
+                );
+
+        }
+
+    } else {
+
+        rows = [
+            flattenObject(
+                value
+            )
+        ];
+
+    }
+
+
+    const columns = [
+        ...new Set(
+            rows.flatMap(
+                row =>
+                    Object.keys(
+                        row
+                    )
+            )
+        )
+    ];
+
+
+    if (
+        columns.length === 0
+    ) {
+
+        container.innerHTML = `
+            <div class="empty-message">
+                No table-compatible fields.
+            </div>
+        `;
+
+        return;
+
+    }
+
+
+    let html = `
+        <table>
+
+            <thead>
+
+                <tr>
+    `;
+
+
+    columns.forEach(
+        column => {
+
+            html += `
+                <th>
+                    ${escapeHTML(
+                        column
+                    )}
+                </th>
+            `;
+
+        }
+    );
+
+
+    html += `
+                </tr>
+
+            </thead>
+
+            <tbody>
+    `;
+
+
+    rows.forEach(
+        (row, index) => {
+
+            html += `
+                <tr
+                    onclick="selectTableRow(
+                        ${index}
+                    )"
+                >
+            `;
+
+
+            columns.forEach(
+                column => {
+
+                    const cell =
+                        row[column];
+
+
+                    html += `
+                        <td>
+                            ${escapeHTML(
+                                formatShortValue(
+                                    cell
+                                )
+                            )}
+                        </td>
+                    `;
+
+                }
+            );
+
+
+            html += `
+                </tr>
+            `;
+
+        }
+    );
+
+
+    html += `
+            </tbody>
+
+        </table>
+    `;
+
+
+    container.innerHTML =
+        html;
+
+}
+
+
+/* =========================================================
+   TABLE ROW SELECT
+========================================================= */
+
+function selectTableRow(
+    index
+) {
+
+    if (
+        !Array.isArray(
+            selectedNode
+        )
+    ) {
+
+        return;
+
+    }
+
+
+    const item =
+        selectedNode[
+            index
+        ];
+
+
+    const path =
+        `${selectedPath}[${index}]`;
+
+
+    selectNode(
+        item,
+        path,
+        index
+    );
+
+}
+
+
+/* =========================================================
+   SEARCH
+========================================================= */
+
+function searchTree() {
+
+    const query =
+        document
+            .getElementById(
+                "searchInput"
+            )
+            .value
+            .trim()
+            .toLowerCase();
+
+
+    const rows =
+        document.querySelectorAll(
+            ".tree-row"
+        );
+
+
+    let count = 0;
+
+
+    rows.forEach(
+        row => {
+
+            row.classList.remove(
+                "search-match"
+            );
+
+
+            if (
+                !query
+            ) {
+
+                return;
+
+            }
+
+
+            const path =
+                row.dataset.path
+                    .toLowerCase();
+
+
+            const text =
+                row.textContent
+                    .toLowerCase();
+
+
+            if (
+                text.includes(
+                    query
+                ) ||
+                path.includes(
+                    query
+                )
+            ) {
+
+                row.classList.add(
+                    "search-match"
+                );
+
+                count++;
+
+            }
+
+        }
+    );
+
+
+    document.getElementById(
+        "searchCount"
+    ).textContent =
+        query
+            ? `${count} match${
+                count === 1
+                    ? ""
+                    : "es"
+            }`
+            : "0 matches";
+
+}
+
+
+/* =========================================================
+   FLATTEN
+========================================================= */
+
+function flattenObject(
+    object,
+    prefix = "",
+    result = {}
+) {
+
+    if (
+        object === null ||
+        typeof object !== "object"
+    ) {
+
+        result[
+            prefix || "value"
+        ] =
+            object;
+
+        return result;
+
+    }
+
+
+    Object.entries(
+        object
+    ).forEach(
+        ([key, value]) => {
+
+            const path =
+                prefix
+                    ? `${prefix}.${key}`
+                    : key;
+
+
+            if (
+                value !== null &&
+                typeof value === "object" &&
+                !Array.isArray(
+                    value
+                )
+            ) {
+
+                flattenObject(
+                    value,
+                    path,
+                    result
+                );
+
+            } else {
+
+                result[path] =
+                    value;
+
+            }
+
+        }
+    );
+
+
+    return result;
+
+}
+
+
+/* =========================================================
+   TYPE
+========================================================= */
+
+function getTypeLabel(
+    value
+) {
+
+    if (
+        value === null
+    ) {
+
+        return "null";
+
+    }
+
+
+    if (
+        Array.isArray(
+            value
+        )
+    ) {
+
+        return `array (${value.length})`;
+
+    }
+
+
+    if (
+        typeof value === "object"
+    ) {
+
+        return `object (${
+            Object.keys(
+                value
+            ).length
+        } fields)`;
+
+    }
+
+
+    return typeof value;
+
+}
+
+
+/* =========================================================
+   VALUE CLASS
+========================================================= */
+
+function getValueClass(
+    value
+) {
+
+    if (
+        value === null
+    ) {
+
+        return "type-null";
+
+    }
+
+
+    switch (
+        typeof value
+    ) {
+
+        case "string":
+            return "type-string";
+
+        case "number":
+            return "type-number";
+
+        case "boolean":
+            return "type-boolean";
+
+        default:
+            return "";
+
+    }
+
+}
+
+
+/* =========================================================
+   SHORT VALUE
+========================================================= */
+
+function formatShortValue(
+    value
+) {
+
+    if (
+        value === null
+    ) {
+
+        return "null";
+
+    }
+
+
+    if (
+        typeof value === "string"
+    ) {
+
+        return `"${value}"`;
+
+    }
+
+
+    if (
+        typeof value === "object"
+    ) {
+
+        if (
+            Array.isArray(
+                value
+            )
+        ) {
+
+            return `Array [${
+                value.length
+            }]`;
+
+        }
+
+
+        return `Object {${
+            Object.keys(
+                value
+            ).length
+        }}`;
+
+    }
+
+
+    return String(
+        value
+    );
+
+}
+
+
+/* =========================================================
+   SUMMARY
+========================================================= */
+
+function getSummary(
+    value
+) {
+
+    if (
+        value === null
+    ) {
+
+        return "null";
+
+    }
+
+
+    if (
+        typeof value === "string"
+    ) {
+
+        return value;
+
+    }
+
+
+    if (
+        typeof value === "object"
+    ) {
+
+        return Array.isArray(
+            value
+        )
+            ? `${value.length} items`
+            : `${Object.keys(
+                value
+            ).length} fields`;
+
+    }
+
+
+    return String(
+        value
+    );
+
+}
+
+
+/* =========================================================
+   COPY PATH
+========================================================= */
+
+async function copyPath() {
+
+    if (
+        !selectedPath
+    ) {
+
+        return;
+
+    }
+
+
+    await copyText(
+        selectedPath
+    );
+
+}
+
+
+/* =========================================================
+   COPY VALUE
+========================================================= */
+
+async function copyValue() {
+
+    if (
+        selectedNode === null ||
+        selectedNode === undefined
+    ) {
+
+        return;
+
+    }
+
+
+    let value;
+
+
+    try {
+
+        value =
+            typeof selectedNode ===
+            "string"
+                ? selectedNode
+                : JSON.stringify(
+                    selectedNode,
+                    null,
+                    4
+                );
+
+    } catch {
+
+        value =
+            String(
+                selectedNode
+            );
+
+    }
+
+
+    await copyText(
+        value
+    );
+
+}
+
+
+/* =========================================================
+   COPY JSON
+========================================================= */
+
+async function copyFormatted() {
+
+    if (
+        rootData === null
+    ) {
+
+        return;
+
+    }
+
+
+    await copyText(
+        JSON.stringify(
+            rootData,
+            null,
+            4
+        )
+    );
+
+}
+
+
+/* =========================================================
+   COPY
+========================================================= */
+
+async function copyText(
+    text
+) {
+
+    try {
+
+        await navigator
+            .clipboard
+            .writeText(
+                text
+            );
+
+    } catch (
+        error
+    ) {
+
+        console.error(
+            error
+        );
+
+    }
+
+}
+
+
+/* =========================================================
+   EXAMPLE
+========================================================= */
+
+function loadExample() {
+
+    input.value =
+`{
+    "success": true,
+    "response": {
+        "requestId": "abc-123",
+        "user": {
+            "id": 12345,
+            "name": "Reno",
+            "role": "developer",
+            "settings": {
+                "notifications": true,
+                "theme": "dark"
+            }
+        },
+        "messages": [
+            {
+                "id": 1001,
+                "sender": "User",
+                "content": "Hello",
+                "metadata": {
+                    "duration": 12.4,
+                    "codec": "opus"
+                }
+            },
+            {
+                "id": 1002,
+                "sender": "Bot",
+                "content": "Hello! How can I help?",
+                "metadata": {
+                    "duration": 8.7,
+                    "codec": "opus"
+                }
+            },
+            {
+                "id": 1003,
+                "sender": "User",
+                "content": "Check the audio duration",
+                "metadata": {
+                    "duration": 14.2,
+                    "codec": "opus"
+                }
+            }
+        ],
+        "pagination": {
+            "page": 1,
+            "limit": 20,
+            "total": 143
+        }
+    }
+}`;
+
+    parseJSON();
+
+}
+
+
+/* =========================================================
+   CLEAR
+========================================================= */
+
+function clearAll() {
+
+    rootData = null;
+
+    selectedNode = null;
+
+    selectedPath = "$";
+
+
+    input.value = "";
+
+
+    tree.innerHTML = `
+        <div class="tree-empty">
+            Paste JSON and click
+            <b>Explore</b>
+        </div>
+    `;
+
+
+    inspector.innerHTML = `
+        <div class="inspector-empty">
+            Select a field from the JSON tree.
+        </div>
+    `;
+
+
+    document.getElementById(
+        "tableContainer"
+    ).innerHTML = `
+        <div class="empty-message">
+            Select an array or object to inspect it as a table.
+        </div>
+    `;
+
+
+    document.getElementById(
+        "searchInput"
+    ).value = "";
+
+
+    document.getElementById(
+        "searchCount"
+    ).textContent =
+        "0 matches";
+
+
+    status.className =
+        "status";
+
+
+    status.textContent =
+        "Waiting for JSON...";
+
+}
+
+
+/* =========================================================
+   CSS ESCAPE
+========================================================= */
+
+function cssEscape(
+    value
+) {
+
+    if (
+        window.CSS &&
+        CSS.escape
+    ) {
+
+        return CSS.escape(
+            value
+        );
+
+    }
+
+
+    return value
+        .replace(
+            /([^\w-])/g,
+            "\\$1"
+        );
+
+}
+
+
+/* =========================================================
+   HTML ESCAPE
+========================================================= */
+
+function escapeHTML(
+    value
+) {
+
+    return String(
+        value
+    )
+
+        .replace(
+            /&/g,
+            "&amp;"
+        )
+
+        .replace(
+            /</g,
+            "&lt;"
+        )
+
+        .replace(
+            />/g,
+            "&gt;"
+        )
+
+        .replace(
+            /"/g,
+            "&quot;"
+        )
+
+        .replace(
+            /'/g,
+            "&#039;"
+        );
+
+}
+
+
+/* =========================================================
+   INITIALIZE
+========================================================= */
+
+document
+    .getElementById(
+        "searchInput"
+    )
+    .addEventListener(
+        "keydown",
+        event => {
+
+            if (
+                event.key ===
+                "Enter"
+            ) {
+
+                searchTree();
+
+            }
+
+        }
+    );
+
+</script>
+
+
+</body>
+
+</html>
