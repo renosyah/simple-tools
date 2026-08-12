@@ -1,0 +1,1293 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Flexbox Playground</title>
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+
+            min-height: 100vh;
+
+            font-family:
+                Arial,
+                sans-serif;
+
+            background: #111827;
+
+            color: white;
+        }
+
+
+        /* =====================================================
+           TOP BAR
+        ===================================================== */
+
+        .toolbar {
+
+            min-height: 60px;
+
+            display: flex;
+
+            align-items: center;
+
+            gap: 10px;
+
+            padding: 10px 15px;
+
+            background: #1f2937;
+
+            border-bottom:
+                1px solid #374151;
+
+        }
+
+
+        .toolbar-title {
+
+            font-size: 18px;
+
+            font-weight: bold;
+
+        }
+
+
+        .toolbar-spacer {
+
+            flex: 1;
+
+        }
+
+
+        button {
+
+            padding:
+                8px 14px;
+
+            border: 0;
+
+            border-radius: 5px;
+
+            cursor: pointer;
+
+            background: #374151;
+
+            color: white;
+
+        }
+
+
+        button:hover {
+
+            background: #4b5563;
+
+        }
+
+
+        /* =====================================================
+           MAIN
+        ===================================================== */
+
+        .editor {
+
+            display: grid;
+
+            grid-template-columns:
+                minmax(0, 1fr)
+                360px;
+
+            height:
+                calc(100vh - 60px);
+
+        }
+
+
+        /* =====================================================
+           PREVIEW
+        ===================================================== */
+
+        .preview-wrapper {
+
+            padding: 30px;
+
+            overflow: auto;
+
+        }
+
+
+        .preview-title {
+
+            margin-bottom: 10px;
+
+            color: #9ca3af;
+
+            font-size: 13px;
+
+        }
+
+
+        .preview-area {
+
+            min-height: 500px;
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: center;
+
+            padding: 30px;
+
+            border:
+                1px solid #374151;
+
+            border-radius: 8px;
+
+            background: #0f172a;
+
+        }
+
+
+        /*
+         * The actual flex container.
+         */
+
+        .flex-container {
+
+            width: 100%;
+
+            min-height: 400px;
+
+            display: flex;
+
+            padding: 20px;
+
+            gap: 10px;
+
+            background: #1e293b;
+
+            border:
+                2px dashed #4b5563;
+
+            border-radius: 8px;
+
+        }
+
+
+        .flex-item {
+
+            min-width: 70px;
+
+            min-height: 70px;
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: center;
+
+            padding: 10px;
+
+            background: #2563eb;
+
+            border:
+                2px solid #60a5fa;
+
+            border-radius: 6px;
+
+            font-weight: bold;
+
+            user-select: none;
+
+        }
+
+
+        .flex-item:nth-child(2) {
+
+            background: #7c3aed;
+
+            border-color: #a78bfa;
+
+        }
+
+
+        .flex-item:nth-child(3) {
+
+            background: #059669;
+
+            border-color: #34d399;
+
+        }
+
+
+        .flex-item:nth-child(4) {
+
+            background: #d97706;
+
+            border-color: #fbbf24;
+
+        }
+
+
+        /* =====================================================
+           SIDEBAR
+        ===================================================== */
+
+        .sidebar {
+
+            padding: 20px;
+
+            overflow-y: auto;
+
+            background: #1f2937;
+
+            border-left:
+                1px solid #374151;
+
+        }
+
+
+        .section {
+
+            margin-bottom: 25px;
+
+        }
+
+
+        .section-title {
+
+            margin-bottom: 10px;
+
+            font-size: 14px;
+
+            font-weight: bold;
+
+            color: #d1d5db;
+
+        }
+
+
+        .control {
+
+            margin-bottom: 12px;
+
+        }
+
+
+        .control label {
+
+            display: block;
+
+            margin-bottom: 5px;
+
+            color: #9ca3af;
+
+            font-size: 12px;
+
+        }
+
+
+        select,
+        input {
+
+            width: 100%;
+
+            padding: 8px;
+
+            border:
+                1px solid #4b5563;
+
+            border-radius: 5px;
+
+            background: #111827;
+
+            color: white;
+
+            outline: none;
+
+        }
+
+
+        select:focus,
+        input:focus {
+
+            border-color: #60a5fa;
+
+        }
+
+
+        /* =====================================================
+           CODE
+        ===================================================== */
+
+        .code {
+
+            padding: 12px;
+
+            background: #111827;
+
+            border:
+                1px solid #374151;
+
+            border-radius: 5px;
+
+            font-family:
+                Consolas,
+                monospace;
+
+            font-size: 12px;
+
+            line-height: 1.6;
+
+            word-break: break-word;
+
+        }
+
+
+        .code-line {
+
+            color: #93c5fd;
+
+        }
+
+
+        .copy-button {
+
+            width: 100%;
+
+            margin-top: 8px;
+
+            background: #2563eb;
+
+        }
+
+
+        .copy-button:hover {
+
+            background: #1d4ed8;
+
+        }
+
+
+        /* =====================================================
+           RESPONSIVE
+        ===================================================== */
+
+        @media (max-width: 900px) {
+
+            .editor {
+
+                grid-template-columns:
+                    1fr;
+
+                height: auto;
+
+            }
+
+
+            .sidebar {
+
+                border-left: 0;
+
+                border-top:
+                    1px solid #374151;
+
+            }
+
+
+            .preview-wrapper {
+
+                min-height: 600px;
+
+            }
+
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+
+<!-- =========================================================
+     TOOLBAR
+========================================================= -->
+
+<div class="toolbar">
+
+    <div class="toolbar-title">
+
+        🔲 Flexbox Playground
+
+    </div>
+
+
+    <div class="toolbar-spacer"></div>
+
+
+    <button
+        onclick="resetSettings()"
+    >
+        Reset
+    </button>
+
+</div>
+
+
+<!-- =========================================================
+     EDITOR
+========================================================= -->
+
+<div class="editor">
+
+
+    <!-- =====================================================
+         PREVIEW
+    ====================================================== -->
+
+    <div class="preview-wrapper">
+
+        <div class="preview-title">
+
+            Live Preview
+
+        </div>
+
+
+        <div class="preview-area">
+
+            <div
+                id="flexContainer"
+                class="flex-container"
+            >
+
+                <div class="flex-item">
+                    1
+                </div>
+
+                <div class="flex-item">
+                    2
+                </div>
+
+                <div class="flex-item">
+                    3
+                </div>
+
+                <div class="flex-item">
+                    4
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- =====================================================
+         SIDEBAR
+    ====================================================== -->
+
+    <div class="sidebar">
+
+
+        <!-- =================================================
+             FLEX CONTAINER
+        ================================================== -->
+
+        <div class="section">
+
+            <div class="section-title">
+                Flex Container
+            </div>
+
+
+            <div class="control">
+
+                <label>
+                    flex-direction
+                </label>
+
+                <select
+                    id="flexDirection"
+                    onchange="update()"
+                >
+
+                    <option value="row">
+                        row
+                    </option>
+
+                    <option value="row-reverse">
+                        row-reverse
+                    </option>
+
+                    <option value="column">
+                        column
+                    </option>
+
+                    <option value="column-reverse">
+                        column-reverse
+                    </option>
+
+                </select>
+
+            </div>
+
+
+            <div class="control">
+
+                <label>
+                    flex-wrap
+                </label>
+
+                <select
+                    id="flexWrap"
+                    onchange="update()"
+                >
+
+                    <option value="nowrap">
+                        nowrap
+                    </option>
+
+                    <option value="wrap">
+                        wrap
+                    </option>
+
+                    <option value="wrap-reverse">
+                        wrap-reverse
+                    </option>
+
+                </select>
+
+            </div>
+
+
+            <div class="control">
+
+                <label>
+                    justify-content
+                </label>
+
+                <select
+                    id="justifyContent"
+                    onchange="update()"
+                >
+
+                    <option value="flex-start">
+                        flex-start
+                    </option>
+
+                    <option value="flex-end">
+                        flex-end
+                    </option>
+
+                    <option value="center">
+                        center
+                    </option>
+
+                    <option value="space-between">
+                        space-between
+                    </option>
+
+                    <option value="space-around">
+                        space-around
+                    </option>
+
+                    <option value="space-evenly">
+                        space-evenly
+                    </option>
+
+                </select>
+
+            </div>
+
+
+            <div class="control">
+
+                <label>
+                    align-items
+                </label>
+
+                <select
+                    id="alignItems"
+                    onchange="update()"
+                >
+
+                    <option value="stretch">
+                        stretch
+                    </option>
+
+                    <option value="flex-start">
+                        flex-start
+                    </option>
+
+                    <option value="flex-end">
+                        flex-end
+                    </option>
+
+                    <option value="center">
+                        center
+                    </option>
+
+                    <option value="baseline">
+                        baseline
+                    </option>
+
+                </select>
+
+            </div>
+
+
+            <div class="control">
+
+                <label>
+                    align-content
+                </label>
+
+                <select
+                    id="alignContent"
+                    onchange="update()"
+                >
+
+                    <option value="normal">
+                        normal
+                    </option>
+
+                    <option value="flex-start">
+                        flex-start
+                    </option>
+
+                    <option value="flex-end">
+                        flex-end
+                    </option>
+
+                    <option value="center">
+                        center
+                    </option>
+
+                    <option value="space-between">
+                        space-between
+                    </option>
+
+                    <option value="space-around">
+                        space-around
+                    </option>
+
+                    <option value="space-evenly">
+                        space-evenly
+                    </option>
+
+                    <option value="stretch">
+                        stretch
+                    </option>
+
+                </select>
+
+            </div>
+
+
+            <div class="control">
+
+                <label>
+                    gap
+                </label>
+
+                <input
+                    id="gap"
+                    type="number"
+                    min="0"
+                    value="10"
+                    onchange="update()"
+                >
+
+            </div>
+
+        </div>
+
+
+        <!-- =================================================
+             ITEMS
+        ================================================== -->
+
+        <div class="section">
+
+            <div class="section-title">
+
+                Flex Items
+
+            </div>
+
+
+            <div class="control">
+
+                <label>
+                    Number of items
+                </label>
+
+                <input
+                    id="itemCount"
+                    type="number"
+                    min="1"
+                    max="12"
+                    value="4"
+                    onchange="updateItems()"
+                >
+
+            </div>
+
+
+            <div class="control">
+
+                <label>
+                    Item width
+                </label>
+
+                <input
+                    id="itemWidth"
+                    type="number"
+                    min="20"
+                    value="70"
+                    onchange="update()"
+                >
+
+            </div>
+
+
+            <div class="control">
+
+                <label>
+                    Item height
+                </label>
+
+                <input
+                    id="itemHeight"
+                    type="number"
+                    min="20"
+                    value="70"
+                    onchange="update()"
+                >
+
+            </div>
+
+        </div>
+
+
+        <!-- =================================================
+             GENERATED TAILWIND
+        ================================================== -->
+
+        <div class="section">
+
+            <div class="section-title">
+
+                Generated Tailwind
+
+            </div>
+
+
+            <div
+                id="generatedCode"
+                class="code"
+            ></div>
+
+
+            <button
+                class="copy-button"
+                onclick="copyCode()"
+            >
+                Copy Tailwind Classes
+            </button>
+
+        </div>
+
+
+    </div>
+
+</div>
+
+
+<script>
+
+/* =========================================================
+   ELEMENTS
+========================================================= */
+
+const container =
+    document.getElementById(
+        "flexContainer"
+    );
+
+
+/* =========================================================
+   UPDATE
+========================================================= */
+
+function update() {
+
+    const direction =
+        document.getElementById(
+            "flexDirection"
+        ).value;
+
+
+    const wrap =
+        document.getElementById(
+            "flexWrap"
+        ).value;
+
+
+    const justify =
+        document.getElementById(
+            "justifyContent"
+        ).value;
+
+
+    const align =
+        document.getElementById(
+            "alignItems"
+        ).value;
+
+
+    const alignContent =
+        document.getElementById(
+            "alignContent"
+        ).value;
+
+
+    const gap =
+        document.getElementById(
+            "gap"
+        ).value;
+
+
+    const itemWidth =
+        document.getElementById(
+            "itemWidth"
+        ).value;
+
+
+    const itemHeight =
+        document.getElementById(
+            "itemHeight"
+        ).value;
+
+
+    /* -----------------------------------------------------
+       Apply CSS
+    ----------------------------------------------------- */
+
+    container.style.flexDirection =
+        direction;
+
+    container.style.flexWrap =
+        wrap;
+
+    container.style.justifyContent =
+        justify;
+
+    container.style.alignItems =
+        align;
+
+    container.style.alignContent =
+        alignContent;
+
+    container.style.gap =
+        `${gap}px`;
+
+
+    document
+        .querySelectorAll(
+            ".flex-item"
+        )
+        .forEach(item => {
+
+            item.style.width =
+                `${itemWidth}px`;
+
+            item.style.height =
+                `${itemHeight}px`;
+
+        });
+
+
+    /* -----------------------------------------------------
+       Tailwind
+    ----------------------------------------------------- */
+
+    const classes = [];
+
+
+    classes.push(
+        "flex"
+    );
+
+
+    if (
+        direction !==
+        "row"
+    ) {
+
+        classes.push(
+            "flex-" +
+            direction.replace(
+                "row-",
+                ""
+            )
+        );
+
+    }
+
+
+    if (
+        wrap !==
+        "nowrap"
+    ) {
+
+        classes.push(
+            "flex-" +
+            wrap
+        );
+
+    }
+
+
+    const justifyMap = {
+
+        "flex-start":
+            "justify-start",
+
+        "flex-end":
+            "justify-end",
+
+        "center":
+            "justify-center",
+
+        "space-between":
+            "justify-between",
+
+        "space-around":
+            "justify-around",
+
+        "space-evenly":
+            "justify-evenly"
+
+    };
+
+
+    if (
+        justifyMap[
+            justify
+        ]
+    ) {
+
+        classes.push(
+            justifyMap[
+                justify
+            ]
+        );
+
+    }
+
+
+    const alignMap = {
+
+        "flex-start":
+            "items-start",
+
+        "flex-end":
+            "items-end",
+
+        "center":
+            "items-center",
+
+        "baseline":
+            "items-baseline",
+
+        "stretch":
+            "items-stretch"
+
+    };
+
+
+    if (
+        alignMap[
+            align
+        ]
+    ) {
+
+        classes.push(
+            alignMap[
+                align
+            ]
+        );
+
+    }
+
+
+    const gapClass =
+        gapToTailwind(
+            gap
+        );
+
+
+    if (gapClass) {
+
+        classes.push(
+            gapClass
+        );
+
+    }
+
+
+    document
+        .getElementById(
+            "generatedCode"
+        )
+        .textContent =
+            classes.join(
+                " "
+            );
+
+}
+
+
+/* =========================================================
+   GAP → TAILWIND
+========================================================= */
+
+function gapToTailwind(
+    value
+) {
+
+    const map = {
+
+        0: "gap-0",
+
+        1: "gap-1",
+
+        2: "gap-2",
+
+        4: "gap-4",
+
+        6: "gap-6",
+
+        8: "gap-8",
+
+        10: "gap-10",
+
+        12: "gap-12",
+
+        16: "gap-16",
+
+        20: "gap-20",
+
+        24: "gap-24"
+
+    };
+
+
+    return (
+        map[value] ||
+        `gap-[${value}px]`
+    );
+
+}
+
+
+/* =========================================================
+   UPDATE ITEMS
+========================================================= */
+
+function updateItems() {
+
+    let count =
+        parseInt(
+            document.getElementById(
+                "itemCount"
+            ).value
+        );
+
+
+    count =
+        Math.max(
+            1,
+            Math.min(
+                12,
+                count
+            )
+        );
+
+
+    document.getElementById(
+        "itemCount"
+    ).value =
+        count;
+
+
+    container.innerHTML = "";
+
+
+    for (
+        let i = 1;
+        i <= count;
+        i++
+    ) {
+
+        const item =
+            document.createElement(
+                "div"
+            );
+
+
+        item.className =
+            "flex-item";
+
+
+        item.textContent =
+            i;
+
+
+        container.appendChild(
+            item
+        );
+
+    }
+
+
+    update();
+
+}
+
+
+/* =========================================================
+   RESET
+========================================================= */
+
+function resetSettings() {
+
+    document.getElementById(
+        "flexDirection"
+    ).value =
+        "row";
+
+
+    document.getElementById(
+        "flexWrap"
+    ).value =
+        "nowrap";
+
+
+    document.getElementById(
+        "justifyContent"
+    ).value =
+        "flex-start";
+
+
+    document.getElementById(
+        "alignItems"
+    ).value =
+        "stretch";
+
+
+    document.getElementById(
+        "alignContent"
+    ).value =
+        "normal";
+
+
+    document.getElementById(
+        "gap"
+    ).value =
+        "10";
+
+
+    document.getElementById(
+        "itemCount"
+    ).value =
+        "4";
+
+
+    document.getElementById(
+        "itemWidth"
+    ).value =
+        "70";
+
+
+    document.getElementById(
+        "itemHeight"
+    ).value =
+        "70";
+
+
+    updateItems();
+
+}
+
+
+/* =========================================================
+   COPY
+========================================================= */
+
+async function copyCode() {
+
+    const code =
+        document.getElementById(
+            "generatedCode"
+        ).textContent;
+
+
+    try {
+
+        await navigator
+            .clipboard
+            .writeText(
+                code
+            );
+
+
+        alert(
+            "Tailwind classes copied!"
+        );
+
+    } catch (error) {
+
+        console.error(
+            error
+        );
+
+        alert(
+            "Could not copy."
+        );
+
+    }
+
+}
+
+
+/* =========================================================
+   INITIALIZE
+========================================================= */
+
+update();
+
+</script>
+
+</body>
+
+</html>
