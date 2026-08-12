@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CSV Editor</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;font-family:Arial,sans-serif;background:#111827;color:#e5e7eb}
+.toolbar{height:56px;display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1f2937;border-bottom:1px solid #374151}
+.toolbar-title{font-size:17px;font-weight:bold;white-space:nowrap}.toolbar-spacer{flex:1}
+button{border:0;border-radius:5px;padding:7px 12px;background:#374151;color:#fff;cursor:pointer}
+button:hover{background:#4b5563}button.primary{background:#2563eb}button.primary:hover{background:#1d4ed8}
+button.danger{background:#7f1d1d}button.danger:hover{background:#991b1b}
+.workspace{position:relative;width:100%;height:calc(100vh - 56px);overflow:hidden;background:linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);background-size:20px 20px}
+.window{position:absolute;min-width:260px;min-height:120px;display:flex;flex-direction:column;background:#1f2937;border:1px solid #4b5563;border-radius:7px;box-shadow:0 10px 30px rgba(0,0,0,.35);overflow:hidden;resize:both}
+.window.closed{display:none}.window.maximized{left:8px!important;top:8px!important;width:calc(100% - 16px)!important;height:calc(100% - 16px)!important}
+.window-header{height:38px;min-height:38px;display:flex;align-items:center;gap:7px;padding:0 7px;background:#273449;border-bottom:1px solid #374151;cursor:grab;user-select:none;touch-action:none}
+.window-header:active{cursor:grabbing}.window-title{font-size:12px;font-weight:bold;color:#d1d5db}.window-spacer{flex:1}
+.window-button{width:25px;height:25px;display:flex;align-items:center;justify-content:center;padding:0;background:transparent;color:#9ca3af}
+.window-button:hover{background:#374151;color:#fff}.window-button.close:hover{background:#991b1b}
+.window-body{flex:1;min-height:0;overflow:hidden}
+
+#window-editor{left:20px;top:20px;width:900px;height:650px}
+.editor-body{display:flex;flex-direction:column;height:100%}
+.controls{display:flex;align-items:center;gap:7px;flex-wrap:wrap;padding:8px;background:#111827;border-bottom:1px solid #374151}
+input[type="text"],select{height:31px;border:1px solid #4b5563;border-radius:5px;outline:0;padding:5px 8px;background:#111827;color:#fff}
+input[type="text"]:focus,select:focus{border-color:#60a5fa}
+.search{width:190px}.delimiter{width:90px}
+.file-input{display:none}
+.status{min-height:28px;padding:6px 10px;font-size:11px;color:#9ca3af;background:#111827;border-top:1px solid #374151}
+.status.valid{color:#34d399;background:#064e3b}.status.invalid{color:#fca5a5;background:#450a0a}
+.table-wrap{flex:1;min-height:0;overflow:auto;background:#111827}
+table{border-collapse:separate;border-spacing:0;min-width:100%;font-family:Consolas,monospace;font-size:12px}
+th,td{border-right:1px solid #374151;border-bottom:1px solid #374151;padding:0;min-width:120px;max-width:500px}
+th{position:sticky;top:0;z-index:5;background:#374151;color:#e5e7eb;height:34px}
+th:first-child{left:0;z-index:7;min-width:45px;width:45px}
+td.row-number{position:sticky;left:0;z-index:3;text-align:center;background:#1f2937;color:#6b7280;min-width:45px;width:45px;height:30px}
+td.cell{height:30px;background:#111827;color:#d1d5db;outline:none;vertical-align:middle}
+td.cell[contenteditable="true"]:focus{background:#172554;box-shadow:inset 0 0 0 1px #60a5fa}
+tr:hover td.cell{background:#172033}
+tr:hover td.cell:focus{background:#172554}
+.header-cell{display:flex;align-items:center;gap:5px;height:34px;padding:0 7px;cursor:pointer;user-select:none}
+.header-text{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sort{color:#93c5fd;font-size:10px}
+.resize-handle{width:5px;height:100%;cursor:col-resize;position:absolute;right:0;top:0}
+th{position:sticky}
+th .header-inner{position:relative;height:100%}
+.drop-zone{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(37,99,235,.18);border:2px dashed #60a5fa;z-index:20;color:#bfdbfe;font-weight:bold}
+.empty{height:100%;display:flex;align-items:center;justify-content:center;color:#6b7280;text-align:center;padding:30px}
+.window-manager{position:fixed;right:12px;bottom:12px;z-index:999999;display:flex;align-items:center;gap:4px;padding:5px;background:#1f2937;border:1px solid #4b5563;border-radius:6px;box-shadow:0 8px 30px rgba(0,0,0,.4)}
+.manager-label{padding:0 5px;color:#9ca3af;font-size:10px}.manager-button{padding:5px 8px;font-size:10px}
+.info{font-size:10px;color:#9ca3af;white-space:nowrap}.cell.search-hit{background:#713f12!important;color:#fef3c7!important;box-shadow:inset 0 0 0 1px #f59e0b}.cell.search-current{background:#b45309!important;color:#fff!important;box-shadow:inset 0 0 0 2px #fbbf24}
+@media(max-width:800px){#window-editor{left:10px;top:10px;width:calc(100% - 20px);height:calc(100% - 20px)}.controls{gap:5px}.search{width:140px}}
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="toolbar-title">📊 CSV Editor</div>
+  <div class="toolbar-spacer"></div>
+  <button onclick="loadExample()">Example</button>
+  <button onclick="document.getElementById('fileInput').click()">Import CSV</button>
+  <button class="primary" onclick="exportCSV()">Export CSV</button>
+  <button class="danger" onclick="clearCSV()">Clear</button>
+  <input id="fileInput" class="file-input" type="file" accept=".csv,text/csv">
+</div>
+
+<div id="workspace" class="workspace">
+  <section id="window-editor" class="window">
+    <div class="window-header">
+      <span>📊</span>
+      <span class="window-title">CSV Editor</span>
+      <div class="window-spacer"></div>
+      <button class="window-button" onclick="maximizeWindow('window-editor')">□</button>
+      <button class="window-button close" onclick="closeWindow('window-editor')">×</button>
+    </div>
+
+    <div class="window-body editor-body">
+      <div class="controls">
+        <button onclick="document.getElementById('fileInput').click()">📂 Import</button>
+        <button onclick="pasteCSV()">📋 Paste</button>
+        <button onclick="addRow()">＋ Row</button>
+        <button onclick="addColumn()">＋ Column</button>
+        <button onclick="deleteLastRow()">− Row</button>
+        <button onclick="deleteLastColumn()">− Column</button>
+
+        <input id="searchInput" class="search" type="text" placeholder="Search... (Enter = next)" oninput="onSearchInput(event)" onkeydown="handleSearchKey(event)">
+
+        <select id="delimiter" class="delimiter" onchange="reparseCurrentText()">
+          <option value=",">Comma ,</option>
+          <option value=";">Semicolon ;</option>
+          <option value="\t">Tab</option>
+        </select>
+
+        <span id="info" class="info">0 rows × 0 columns</span><span id="searchInfo" class="info">0 matches</span>
+      </div>
+
+      <div id="tableWrap" class="table-wrap">
+        <div class="empty">Import a CSV file or paste CSV data here.</div>
+      </div>
+
+      <div id="dropZone" class="drop-zone">Drop CSV file here</div>
+      <div id="status" class="status">Waiting for CSV...</div>
+    </div>
+  </section>
+</div>
+
+<div class="window-manager">
+  <span class="manager-label">WINDOWS</span>
+  <button class="manager-button" onclick="openWindow('window-editor')">📊 CSV</button>
+</div>
+
+<script>
+let rows=[];
+let sortState={index:-1,dir:1};
+let zIndexCounter=10;
+let lastCSVText="";
+let searchMatches=[];
+let searchIndex=-1;
+
+const editor=document.getElementById("window-editor");
+const fileInput=document.getElementById("fileInput");
+const tableWrap=document.getElementById("tableWrap");
+const statusEl=document.getElementById("status");
+
+function setupWindow(win){
+  const header=win.querySelector(".window-header");
+  win.addEventListener("pointerdown",()=>bringToFront(win));
+  header.addEventListener("pointerdown",startDrag);
+}
+setupWindow(editor);
+
+function bringToFront(el){el.style.zIndex=++zIndexCounter}
+
+function startDrag(e){
+  if(e.target.closest("button")) return;
+  const win=e.currentTarget.closest(".window");
+  if(win.classList.contains("maximized")) return;
+  e.preventDefault(); bringToFront(win);
+  const ws=document.getElementById("workspace").getBoundingClientRect();
+  const wr=win.getBoundingClientRect();
+  const sx=e.clientX, sy=e.clientY;
+  const sl=wr.left-ws.left, st=wr.top-ws.top;
+  function move(ev){
+    let left=Math.max(0,Math.min(sl+ev.clientX-sx,ws.width-80));
+    let top=Math.max(0,Math.min(st+ev.clientY-sy,ws.height-45));
+    win.style.left=left+"px"; win.style.top=top+"px";
+  }
+  function stop(){
+    document.removeEventListener("pointermove",move);
+    document.removeEventListener("pointerup",stop);
+    document.removeEventListener("pointercancel",stop);
+  }
+  document.addEventListener("pointermove",move);
+  document.addEventListener("pointerup",stop);
+  document.addEventListener("pointercancel",stop);
+}
+
+function maximizeWindow(id){
+  const el=document.getElementById(id);
+  if(el.classList.contains("maximized")){
+    el.classList.remove("maximized");
+    el.style.left=el.dataset.oldLeft;
+    el.style.top=el.dataset.oldTop;
+    el.style.width=el.dataset.oldWidth;
+    el.style.height=el.dataset.oldHeight;
+  }else{
+    el.dataset.oldLeft=el.style.left||el.offsetLeft+"px";
+    el.dataset.oldTop=el.style.top||el.offsetTop+"px";
+    el.dataset.oldWidth=el.style.width||el.offsetWidth+"px";
+    el.dataset.oldHeight=el.style.height||el.offsetHeight+"px";
+    el.classList.add("maximized");
+  }
+  bringToFront(el);
+}
+function closeWindow(id){document.getElementById(id).classList.add("closed")}
+function openWindow(id){document.getElementById(id).classList.remove("closed");bringToFront(document.getElementById(id))}
+
+fileInput.addEventListener("change",e=>{
+  const file=e.target.files[0];
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=()=>loadCSV(reader.result,file.name);
+  reader.onerror=()=>setStatus("Could not read file.","invalid");
+  reader.readAsText(file);
+  fileInput.value="";
+});
+
+["dragenter","dragover"].forEach(type=>{
+  editor.addEventListener(type,e=>{
+    e.preventDefault();
+    document.getElementById("dropZone").style.display="flex";
+  });
+});
+["dragleave","drop"].forEach(type=>{
+  editor.addEventListener(type,e=>{
+    e.preventDefault();
+    if(type==="dragleave" && e.relatedTarget && editor.contains(e.relatedTarget))return;
+    document.getElementById("dropZone").style.display="none";
+  });
+});
+editor.addEventListener("drop",e=>{
+  const file=e.dataTransfer.files[0];
+  if(!file)return;
+  if(!file.name.toLowerCase().endsWith(".csv")){
+    setStatus("Please drop a CSV file.","invalid"); return;
+  }
+  const reader=new FileReader();
+  reader.onload=()=>loadCSV(reader.result,file.name);
+  reader.readAsText(file);
+});
+
+async function pasteCSV(){
+  try{
+    const text=await navigator.clipboard.readText();
+    if(!text.trim()){setStatus("Clipboard is empty.","invalid");return}
+    loadCSV(text,"Clipboard");
+  }catch{
+    const text=prompt("Paste CSV data:");
+    if(text)loadCSV(text,"Pasted CSV");
+  }
+}
+
+function loadCSV(text,name="CSV"){
+  lastCSVText=text;
+  try{
+    const delimiter=document.getElementById("delimiter").value;
+    rows=parseCSV(text,delimiter);
+    if(!rows.length)throw new Error("CSV is empty.");
+    sortState={index:-1,dir:1};
+    renderTable();
+    setStatus(`✓ Loaded ${name} — ${rows.length} rows, ${columnCount()} columns`,"valid");
+  }catch(err){
+    rows=[];
+    renderTable();
+    setStatus("✕ "+err.message,"invalid");
+  }
+}
+
+function reparseCurrentText(){
+  if(!lastCSVText)return;
+  loadCSV(lastCSVText,"CSV");
+}
+
+function parseCSV(text,delimiter){
+  const out=[];
+  let row=[],field="",quoted=false;
+  const d=delimiter;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(quoted){
+      if(c==='"'){
+        if(text[i+1]==='"'){field+='"';i++}
+        else quoted=false;
+      }else field+=c;
+    }else{
+      if(c==='"' && field===""){quoted=true}
+      else if(c===d){row.push(field);field=""}
+      else if(c==="\n"){
+        row.push(field);field="";
+        if(row.length>1 || row[0]!=="")out.push(row);
+        row=[];
+      }else if(c==="\r"){
+        if(text[i+1]==="\n")i++;
+        row.push(field);field="";
+        if(row.length>1 || row[0]!=="")out.push(row);
+        row=[];
+      }else field+=c;
+    }
+  }
+  if(quoted)throw new Error("Unclosed quoted field.");
+  row.push(field);
+  if(row.length>1 || row[0]!=="")out.push(row);
+  const max=Math.max(...out.map(r=>r.length),0);
+  out.forEach(r=>{while(r.length<max)r.push("")});
+  return out;
+}
+
+function columnCount(){return rows.length?Math.max(...rows.map(r=>r.length)):0}
+
+function renderTable(){
+  if(!rows.length){
+    tableWrap.innerHTML='<div class="empty">Import a CSV file or paste CSV data here.</div>';
+    searchMatches=[]; searchIndex=-1; updateInfo(); updateSearchInfo(); return;
+  }
+
+  const query=document.getElementById("searchInput").value.trim().toLowerCase();
+  const cols=columnCount();
+  const header=rows[0];
+
+  let html="<table><thead><tr><th><div class=\"header-inner\"><div class=\"header-cell\">#</div></div></th>";
+
+  for(let c=0;c<cols;c++){
+    const label=header[c]||`Column ${c+1}`;
+    const arrow=sortState.index===c?(sortState.dir===1?"▲":"▼"):"";
+    html+=`<th data-col="${c}"><div class="header-inner"><div class="header-cell" onclick="sortColumn(${c})"><span class="header-text">${esc(label)}</span><span class="sort">${arrow}</span></div><span class="resize-handle"></span></div></th>`;
+  }
+
+  html+="</tr></thead><tbody>";
+
+  for(let r=1;r<rows.length;r++){
+    const row=rows[r];
+    html+=`<tr><td class="row-number">${r}</td>`;
+
+    for(let c=0;c<cols;c++){
+      const value=String(row[c]??"");
+      const hit=query && value.toLowerCase().includes(query);
+      html+=`<td class="cell${hit?" search-hit":""}" contenteditable="true" data-r="${r}" data-c="${c}">${esc(value)}</td>`;
+    }
+
+    html+="</tr>";
+  }
+
+  html+="</tbody></table>";
+  tableWrap.innerHTML=html;
+
+  tableWrap.querySelectorAll(".cell").forEach(cell=>{
+    cell.addEventListener("input",()=>{
+      rows[+cell.dataset.r][+cell.dataset.c]=cell.textContent;
+      markDirty();
+      updateSearchMatches(false);
+    });
+    cell.addEventListener("keydown",handleCellKey);
+  });
+
+  setupColumnResize();
+  updateInfo();
+  updateSearchMatches(true);
+}
+
+function collectSearchMatches(){
+  const query=document.getElementById("searchInput").value.trim().toLowerCase();
+  if(!query)return [];
+
+  return [...tableWrap.querySelectorAll(".cell")].filter(cell =>
+    String(cell.textContent||"").toLowerCase().includes(query)
+  );
+}
+
+function updateSearchMatches(resetIndex=true){
+  searchMatches=collectSearchMatches();
+
+  if(resetIndex || searchIndex>=searchMatches.length){
+    searchIndex=searchMatches.length ? 0 : -1;
+  }
+
+  tableWrap.querySelectorAll(".cell.search-current").forEach(el=>{
+    el.classList.remove("search-current");
+  });
+
+  if(searchIndex>=0 && searchMatches[searchIndex]){
+    searchMatches[searchIndex].classList.add("search-current");
+  }
+
+  updateSearchInfo();
+}
+
+function updateSearchInfo(){
+  const el=document.getElementById("searchInfo");
+  if(!el)return;
+
+  el.textContent=searchMatches.length
+    ? `${searchIndex+1} / ${searchMatches.length} matches`
+    : "0 matches";
+}
+
+function onSearchInput(){
+  renderTable();
+  if(searchMatches.length){
+    setTimeout(focusSearchMatch,20);
+  }
+}
+
+function handleSearchKey(e){
+  if(e.key==="Enter"){
+    e.preventDefault();
+    moveSearchMatch(e.shiftKey ? -1 : 1);
+  }
+
+  if(e.key==="Escape"){
+    e.preventDefault();
+    document.getElementById("searchInput").value="";
+    renderTable();
+    document.getElementById("searchInput").focus();
+  }
+}
+
+function moveSearchMatch(direction){
+  if(!searchMatches.length){
+    updateSearchMatches(true);
+    return;
+  }
+
+  searchMatches[searchIndex]?.classList.remove("search-current");
+
+  searchIndex += direction;
+
+  if(searchIndex>=searchMatches.length)searchIndex=0;
+  if(searchIndex<0)searchIndex=searchMatches.length-1;
+
+  const cell=searchMatches[searchIndex];
+
+  if(cell){
+    cell.classList.add("search-current");
+    cell.scrollIntoView({behavior:"smooth",block:"center",inline:"center"});
+  }
+
+  updateSearchInfo();
+}
+
+function focusSearchMatch(){
+  const cell=searchMatches[searchIndex];
+  if(!cell)return;
+  cell.classList.add("search-current");
+  cell.scrollIntoView({behavior:"smooth",block:"center",inline:"center"});
+}
+
+function handleCellKey(e){
+  if(e.key==="Tab"){
+    e.preventDefault();
+    const cells=[...tableWrap.querySelectorAll(".cell")];
+    const i=cells.indexOf(e.currentTarget);
+    const next=cells[e.shiftKey?i-1:i+1];
+    if(next){next.focus();placeCaretEnd(next)}
+    else if(!e.shiftKey){addRow();setTimeout(()=>{const all=[...tableWrap.querySelectorAll(".cell")];all[all.length-columnCount()]?.focus()},0)}
+  }
+  if(e.key==="Enter"){e.preventDefault();e.currentTarget.blur()}
+}
+
+function placeCaretEnd(el){
+  const range=document.createRange(),sel=window.getSelection();
+  range.selectNodeContents(el);range.collapse(false);sel.removeAllRanges();sel.addRange(range);
+}
+
+function setupColumnResize(){
+  tableWrap.querySelectorAll(".resize-handle").forEach(handle=>{
+    handle.addEventListener("pointerdown",e=>{
+      e.preventDefault();e.stopPropagation();
+      const th=handle.closest("th"),startX=e.clientX,startW=th.offsetWidth;
+      function move(ev){th.style.width=Math.max(70,startW+ev.clientX-startX)+"px"}
+      function stop(){document.removeEventListener("pointermove",move);document.removeEventListener("pointerup",stop)}
+      document.addEventListener("pointermove",move);document.addEventListener("pointerup",stop);
+    });
+  });
+}
+
+function sortColumn(c){
+  if(sortState.index===c)sortState.dir*=-1; else {sortState.index=c;sortState.dir=1}
+  const dir=sortState.dir;
+  const header=rows[0];
+  const body=rows.slice(1);
+  body.sort((a,b)=>{
+    const av=a[c]??"",bv=b[c]??"";
+    const an=Number(av),bn=Number(bv);
+    if(av!==""&&bv!==""&&!Number.isNaN(an)&&!Number.isNaN(bn))return (an-bn)*dir;
+    return String(av).localeCompare(String(bv),undefined,{numeric:true,sensitivity:"base"})*dir;
+  });
+  rows=[header,...body];
+  renderTable();
+}
+
+function addRow(){
+  const cols=columnCount()||1;
+  rows.push(Array(cols).fill(""));
+  renderTable();
+  markDirty();
+}
+
+function deleteLastRow(){
+  if(rows.length<=1)return;
+  rows.pop();renderTable();markDirty();
+}
+
+function addColumn(){
+  if(!rows.length)rows=[["Column 1"]];
+  const n=columnCount()+1;
+  rows.forEach((r,i)=>r.push(i===0?`Column ${n}`:""));
+  renderTable();markDirty();
+}
+
+function deleteLastColumn(){
+  const n=columnCount();
+  if(n<=1)return;
+  rows.forEach(r=>r.pop());
+  renderTable();markDirty();
+}
+
+function exportCSV(){
+  if(!rows.length){setStatus("Nothing to export.","invalid");return}
+  const delimiter=document.getElementById("delimiter").value;
+  const text=rows.map(r=>r.map(v=>csvEscape(v,delimiter)).join(delimiter)).join("\r\n");
+  const blob=new Blob([text],{type:"text/csv;charset=utf-8"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;a.download="edited.csv";a.click();URL.revokeObjectURL(url);
+  lastCSVText=text;
+  setStatus("✓ CSV exported.","valid");
+}
+
+function csvEscape(value,delimiter){
+  value=String(value??"");
+  if(value.includes('"')||value.includes("\n")||value.includes("\r")||value.includes(delimiter))
+    return '"'+value.replace(/"/g,'""')+'"';
+  return value;
+}
+
+function loadExample(){
+  const text=`id,name,role,duration,codec,description
+1001,Reno,developer,14.2,opus,"Hello, world"
+1002,Bob,designer,8.7,opus,"Normal message"
+1003,Alice,admin,21.4,opus,"Line one
+Line two"
+1004,John,user,5.8,opus,"""quoted"" value"`;
+  document.getElementById("delimiter").value=",";
+  loadCSV(text,"Example");
+}
+
+function clearCSV(){
+  rows=[];lastCSVText="";sortState={index:-1,dir:1};
+  document.getElementById("searchInput").value="";
+  renderTable();setStatus("Waiting for CSV...");
+}
+
+function markDirty(){
+  statusEl.className="status";
+  statusEl.textContent="● Modified — export to save changes";
+}
+
+function updateInfo(){
+  document.getElementById("info").textContent=`${Math.max(0,rows.length-1)} rows × ${columnCount()} columns`;
+}
+
+function setStatus(text,cls=""){statusEl.className="status "+cls;statusEl.textContent=text}
+
+function esc(v){
+  return String(v??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;");
+}
+
+document.addEventListener("keydown",e=>{
+  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="s"){
+    e.preventDefault();exportCSV();
+  }
+});
+
+renderTable();
+</script>
+</body>
+</html>
