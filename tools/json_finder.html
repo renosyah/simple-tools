@@ -1,911 +1,753 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JSON Explorer</title>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    font-family: Arial, sans-serif;
+    background: #111827;
+    color: #e5e7eb;
+}
+
+/* =========================================================
+   TOOLBAR
+========================================================= */
+
+.toolbar {
+    height: 56px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: #1f2937;
+    border-bottom: 1px solid #374151;
+}
+
+.toolbar-title {
+    font-size: 17px;
+    font-weight: bold;
+    white-space: nowrap;
+}
+
+.toolbar-spacer {
+    flex: 1;
+}
+
+button {
+    border: 0;
+    border-radius: 5px;
+    padding: 7px 12px;
+    background: #374151;
+    color: white;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #4b5563;
+}
+
+button.primary {
+    background: #2563eb;
+}
+
+button.primary:hover {
+    background: #1d4ed8;
+}
+
+button.danger {
+    background: #7f1d1d;
+}
+
+button.danger:hover {
+    background: #991b1b;
+}
+
+/* =========================================================
+   WORKSPACE
+========================================================= */
+
+.workspace {
+    position: relative;
+
+    width: 100%;
+    height: calc(100vh - 56px);
+
+    overflow: hidden;
+
+    background:
+        linear-gradient(
+            rgba(255,255,255,.025) 1px,
+            transparent 1px
+        ),
+        linear-gradient(
+            90deg,
+            rgba(255,255,255,.025) 1px,
+            transparent 1px
+        );
 
-    <meta charset="UTF-8">
+    background-size: 20px 20px;
+}
 
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
+/* =========================================================
+   WINDOW
+========================================================= */
 
-    <title>JSON Explorer</title>
+.window {
+    position: absolute;
 
+    min-width: 220px;
+    min-height: 120px;
 
-    <style>
+    display: flex;
+    flex-direction: column;
 
-        * {
-            box-sizing: border-box;
-        }
+    background: #1f2937;
 
+    border: 1px solid #4b5563;
+    border-radius: 7px;
 
-        body {
+    box-shadow:
+        0 10px 30px rgba(0,0,0,.35);
 
-            margin: 0;
+    overflow: hidden;
 
-            min-height: 100vh;
+    resize: both;
+}
 
-            font-family:
-                Arial,
-                sans-serif;
+.window.closed {
+    display: none;
+}
 
-            background: #111827;
+.window.maximized {
+    left: 8px !important;
+    top: 8px !important;
+    width: calc(100% - 16px) !important;
+    height: calc(100% - 16px) !important;
+}
 
-            color: white;
+/* =========================================================
+   WINDOW HEADER
+========================================================= */
 
-        }
+.window-header {
+    height: 38px;
+    min-height: 38px;
 
+    display: flex;
+    align-items: center;
 
-        /* =====================================================
-           TOOLBAR
-        ===================================================== */
+    padding: 0 7px;
 
-        .toolbar {
+    gap: 7px;
 
-            min-height: 60px;
+    background: #273449;
 
-            display: flex;
+    border-bottom: 1px solid #374151;
 
-            align-items: center;
+    cursor: grab;
 
-            gap: 10px;
+    user-select: none;
 
-            padding: 10px 15px;
+    touch-action: none;
+}
 
-            background: #1f2937;
+.window-header:active {
+    cursor: grabbing;
+}
 
-            border-bottom:
-                1px solid #374151;
+.window-title {
+    font-size: 12px;
+    font-weight: bold;
 
-        }
+    color: #d1d5db;
+}
 
+.window-spacer {
+    flex: 1;
+}
 
-        .toolbar-title {
+.window-button {
+    width: 25px;
+    height: 25px;
 
-            font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 
-            font-weight: bold;
+    padding: 0;
 
-        }
+    background: transparent;
 
+    color: #9ca3af;
+}
 
-        .toolbar-spacer {
+.window-button:hover {
+    background: #374151;
+    color: white;
+}
 
-            flex: 1;
+.window-button.close:hover {
+    background: #991b1b;
+}
 
-        }
+/* =========================================================
+   WINDOW BODY
+========================================================= */
 
+.window-body {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
 
-        button {
+/* =========================================================
+   INPUT
+========================================================= */
 
-            padding:
-                8px 14px;
+#window-input {
+    left: 20px;
+    top: 20px;
 
-            border: 0;
+    width: 420px;
+    height: 280px;
+}
 
-            border-radius: 5px;
+.input-body {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
 
-            cursor: pointer;
+textarea {
+    width: 100%;
+    height: 100%;
 
-            background: #374151;
+    flex: 1;
 
-            color: white;
+    resize: none;
 
-        }
+    border: 0;
+    outline: 0;
 
+    padding: 12px;
 
-        button:hover {
+    background: #111827;
+    color: #d1d5db;
 
-            background: #4b5563;
+    font-family: Consolas, monospace;
+    font-size: 12px;
 
-        }
+    line-height: 1.5;
+}
 
+textarea::placeholder {
+    color: #6b7280;
+}
 
-        button.primary {
+.status {
+    min-height: 28px;
 
-            background: #2563eb;
+    padding: 6px 10px;
 
-        }
+    font-size: 11px;
 
+    color: #9ca3af;
 
-        button.primary:hover {
+    background: #111827;
 
-            background: #1d4ed8;
+    border-top: 1px solid #374151;
+}
 
-        }
+.status.valid {
+    color: #34d399;
+    background: #064e3b;
+}
 
+.status.invalid {
+    color: #fca5a5;
+    background: #450a0a;
+}
 
-        button.danger {
+/* =========================================================
+   SEARCH
+========================================================= */
 
-            background: #7f1d1d;
+#window-search {
+    left: 460px;
+    top: 20px;
 
-        }
+    width: 400px;
+    height: 120px;
+}
 
+.search-body {
+    display: flex;
+    align-items: center;
+    gap: 8px;
 
-        button.danger:hover {
+    padding: 10px;
+}
 
-            background: #991b1b;
+.search-input {
+    flex: 1;
 
-        }
+    height: 32px;
 
+    border: 1px solid #4b5563;
+    border-radius: 5px;
 
-        /* =====================================================
-           MAIN
-        ===================================================== */
+    outline: none;
 
-        .main {
+    padding: 5px 9px;
 
-            height:
-                calc(100vh - 60px);
+    background: #111827;
+    color: white;
+}
 
-            display: flex;
+.search-input:focus {
+    border-color: #60a5fa;
+}
 
-            flex-direction: column;
+.search-count {
+    color: #9ca3af;
 
-            padding: 15px;
+    font-size: 11px;
 
-            gap: 15px;
+    white-space: nowrap;
+}
 
-        }
+/* =========================================================
+   TREE
+========================================================= */
 
+#window-tree {
+    left: 20px;
+    top: 320px;
 
-        /* =====================================================
-           INPUT
-        ===================================================== */
+    width: 420px;
+    height: 420px;
+}
 
-        .input-panel {
+.tree {
+    height: 100%;
 
-            height: 180px;
+    overflow: auto;
 
-            min-height: 120px;
+    padding: 8px;
 
-            display: flex;
+    background: #111827;
 
-            flex-direction: column;
+    font-family: Consolas, monospace;
+    font-size: 12px;
+}
 
-            background: #1f2937;
+.tree-empty {
+    padding: 30px 10px;
 
-            border:
-                1px solid #374151;
+    text-align: center;
 
-            border-radius: 8px;
+    color: #6b7280;
+}
 
-            overflow: hidden;
+.tree-row {
+    min-height: 27px;
 
-        }
+    display: flex;
+    align-items: center;
 
+    gap: 5px;
 
-        .panel-header {
+    padding: 3px 5px;
 
-            min-height: 40px;
+    border-radius: 4px;
 
-            display: flex;
+    cursor: pointer;
+}
 
-            align-items: center;
+.tree-row:hover {
+    background: #273449;
+}
 
-            gap: 10px;
+.tree-row.selected {
+    background: #1d4ed8;
+}
 
-            padding:
-                0 12px;
+.tree-row.search-match {
+    outline: 1px solid #f59e0b;
+}
 
-            border-bottom:
-                1px solid #374151;
+.tree-toggle {
+    width: 15px;
+    flex-shrink: 0;
 
-            color: #d1d5db;
+    text-align: center;
 
-            font-size: 13px;
+    color: #9ca3af;
+}
 
-            font-weight: bold;
+.tree-key {
+    color: #93c5fd;
+}
 
-        }
+.tree-index {
+    color: #c4b5fd;
+}
 
+.tree-value {
+    overflow: hidden;
 
-        .panel-header-spacer {
+    text-overflow: ellipsis;
 
-            flex: 1;
+    white-space: nowrap;
+}
 
-        }
+.tree-type {
+    color: #6b7280;
+    font-size: 10px;
+}
 
+.tree-children {
+    margin-left: 17px;
+}
 
-        textarea {
+.tree-children.hidden {
+    display: none;
+}
 
-            flex: 1;
+.type-string {
+    color: #34d399;
+}
 
-            width: 100%;
+.type-number {
+    color: #fbbf24;
+}
 
-            resize: none;
+.type-boolean {
+    color: #f472b6;
+}
 
-            border: 0;
+.type-null {
+    color: #6b7280;
+}
 
-            outline: 0;
+/* =========================================================
+   INSPECTOR
+========================================================= */
 
-            padding: 12px;
+#window-inspector {
+    left: 470px;
+    top: 160px;
 
-            background: #111827;
+    width: 450px;
+    height: 420px;
+}
 
-            color: #d1d5db;
+.inspector {
+    height: 100%;
 
-            font-family:
-                Consolas,
-                "Courier New",
-                monospace;
+    overflow: auto;
 
-            font-size: 12px;
+    padding: 14px;
 
-            line-height: 1.5;
+    background: #111827;
+}
 
-        }
+.inspector-empty {
+    height: 100%;
 
+    display: flex;
+    align-items: center;
+    justify-content: center;
 
-        textarea::placeholder {
+    text-align: center;
 
-            color: #6b7280;
+    color: #6b7280;
+}
 
-        }
+.field-title {
+    margin-bottom: 12px;
 
+    font-size: 18px;
+    font-weight: bold;
+}
 
-        .status {
+.field-path {
+    margin-bottom: 15px;
 
-            padding:
-                7px 12px;
+    padding: 9px;
 
-            font-size: 11px;
+    border: 1px solid #374151;
+    border-radius: 5px;
 
-            border-top:
-                1px solid #374151;
+    background: #1f2937;
 
-            color: #9ca3af;
+    color: #93c5fd;
 
-            background: #111827;
+    font-family: Consolas, monospace;
+    font-size: 11px;
 
-        }
+    word-break: break-all;
+}
 
+.info-grid {
+    display: grid;
 
-        .status.valid {
+    grid-template-columns: 100px minmax(0,1fr);
 
-            color: #34d399;
+    gap: 1px;
 
-            background: #064e3b;
+    background: #374151;
 
-        }
+    border: 1px solid #374151;
+    border-radius: 5px;
 
+    overflow: hidden;
+}
 
-        .status.invalid {
+.info-label {
+    padding: 9px;
 
-            color: #fca5a5;
+    background: #1f2937;
 
-            background: #450a0a;
+    color: #9ca3af;
 
-        }
+    font-size: 11px;
+}
 
+.info-value {
+    min-width: 0;
 
-        /* =====================================================
-           SEARCH
-        ===================================================== */
+    padding: 9px;
 
-        .search-panel {
+    background: #111827;
 
-            display: flex;
+    color: #d1d5db;
 
-            align-items: center;
+    font-family: Consolas, monospace;
+    font-size: 11px;
 
-            gap: 10px;
+    word-break: break-word;
+}
 
-            padding: 10px;
+.value-box {
+    margin-top: 14px;
+}
 
-            background: #1f2937;
+.value-box-title {
+    margin-bottom: 6px;
 
-            border:
-                1px solid #374151;
+    color: #9ca3af;
 
-            border-radius: 8px;
+    font-size: 11px;
+}
 
-        }
+.raw-value {
+    max-height: 300px;
 
+    overflow: auto;
 
-        .search-icon {
+    padding: 10px;
 
-            color: #9ca3af;
+    background: #1f2937;
 
-            font-size: 16px;
+    border: 1px solid #374151;
+    border-radius: 5px;
 
-        }
+    color: #d1d5db;
 
+    font-family: Consolas, monospace;
+    font-size: 11px;
 
-        .search-input {
+    white-space: pre-wrap;
 
-            flex: 1;
+    word-break: break-word;
+}
 
-            padding: 8px 10px;
+.inspector-buttons {
+    display: flex;
+    gap: 7px;
 
-            border:
-                1px solid #4b5563;
+    margin-top: 8px;
+}
 
-            border-radius: 5px;
+/* =========================================================
+   TABLE
+========================================================= */
 
-            outline: none;
+#window-table {
+    left: 950px;
+    top: 160px;
 
-            background: #111827;
+    width: 520px;
+    height: 350px;
+}
 
-            color: white;
+.table-wrapper {
+    height: 100%;
 
-        }
+    overflow: auto;
 
+    background: #111827;
+}
 
-        .search-input:focus {
+table {
+    width: 100%;
 
-            border-color: #60a5fa;
+    border-collapse: collapse;
 
-        }
+    font-size: 11px;
+}
 
+th,
+td {
+    padding: 7px 9px;
 
-        .search-count {
+    text-align: left;
 
-            color: #9ca3af;
+    border-bottom: 1px solid #374151;
 
-            font-size: 12px;
+    white-space: nowrap;
+}
 
-            white-space: nowrap;
+th {
+    position: sticky;
+    top: 0;
 
-        }
+    background: #374151;
 
+    color: #e5e7eb;
+}
 
-        /* =====================================================
-           EXPLORER
-        ===================================================== */
+td {
+    color: #d1d5db;
+}
 
-        .explorer {
+tbody tr {
+    cursor: pointer;
+}
 
-            flex: 1;
+tbody tr:hover td {
+    background: #273449;
+}
 
-            min-height: 0;
+.empty-message {
+    height: 100%;
 
-            display: grid;
+    display: flex;
 
-            grid-template-columns:
-                380px
-                minmax(0, 1fr);
+    align-items: center;
+    justify-content: center;
 
-            gap: 15px;
+    padding: 20px;
 
-        }
+    color: #6b7280;
 
+    text-align: center;
 
-        .panel {
+    font-size: 11px;
+}
 
-            min-width: 0;
+/* =========================================================
+   WINDOW MANAGER
+========================================================= */
 
-            min-height: 0;
+.window-manager {
+    position: fixed;
 
-            display: flex;
+    right: 12px;
+    bottom: 12px;
 
-            flex-direction: column;
+    z-index: 999999;
 
-            background: #1f2937;
+    display: flex;
+    align-items: center;
+    gap: 4px;
 
-            border:
-                1px solid #374151;
+    padding: 5px;
 
-            border-radius: 8px;
+    background: #1f2937;
 
-            overflow: hidden;
+    border: 1px solid #4b5563;
+    border-radius: 6px;
 
-        }
+    box-shadow: 0 8px 30px rgba(0,0,0,.4);
+}
 
+.manager-label {
+    padding: 0 5px;
 
-        /* =====================================================
-           TREE
-        ===================================================== */
+    color: #9ca3af;
 
-        .tree {
+    font-size: 10px;
+}
 
-            flex: 1;
+.manager-button {
+    padding: 5px 8px;
 
-            overflow: auto;
+    font-size: 10px;
+}
 
-            padding: 10px;
+/* =========================================================
+   MOBILE
+========================================================= */
 
-            background: #111827;
+@media (max-width: 800px) {
 
-            font-family:
-                Consolas,
-                "Courier New",
-                monospace;
+    body {
+        overflow: hidden;
+    }
 
-            font-size: 12px;
+    .window {
+        min-width: 180px;
+    }
 
-        }
+    #window-input {
+        left: 10px;
+        top: 10px;
+        width: calc(100% - 20px);
+        height: 250px;
+    }
 
+    #window-search {
+        left: 10px;
+        top: 270px;
+        width: calc(100% - 20px);
+    }
 
-        .tree-empty {
+    #window-tree {
+        left: 10px;
+        top: 400px;
+        width: calc(100% - 20px);
+    }
 
-            padding: 30px 10px;
+    #window-inspector {
+        left: 10px;
+        top: 500px;
+        width: calc(100% - 20px);
+    }
 
-            text-align: center;
-
-            color: #6b7280;
-
-        }
-
-
-        .tree-node {
-
-            user-select: none;
-
-        }
-
-
-        .tree-row {
-
-            min-height: 28px;
-
-            display: flex;
-
-            align-items: center;
-
-            gap: 5px;
-
-            padding:
-                3px 6px;
-
-            border-radius: 4px;
-
-            cursor: pointer;
-
-        }
-
-
-        .tree-row:hover {
-
-            background: #273449;
-
-        }
-
-
-        .tree-row.selected {
-
-            background: #1d4ed8;
-
-        }
-
-
-        .tree-row.search-match {
-
-            outline:
-                1px solid #f59e0b;
-
-        }
-
-
-        .tree-toggle {
-
-            width: 16px;
-
-            color: #9ca3af;
-
-            text-align: center;
-
-            flex-shrink: 0;
-
-        }
-
-
-        .tree-key {
-
-            color: #93c5fd;
-
-        }
-
-
-        .tree-index {
-
-            color: #a78bfa;
-
-        }
-
-
-        .tree-value {
-
-            color: #d1d5db;
-
-            overflow: hidden;
-
-            text-overflow: ellipsis;
-
-            white-space: nowrap;
-
-        }
-
-
-        .tree-type {
-
-            color: #6b7280;
-
-            font-size: 10px;
-
-        }
-
-
-        .tree-children {
-
-            margin-left: 17px;
-
-        }
-
-
-        .type-string {
-
-            color: #34d399;
-
-        }
-
-
-        .type-number {
-
-            color: #fbbf24;
-
-        }
-
-
-        .type-boolean {
-
-            color: #f472b6;
-
-        }
-
-
-        .type-null {
-
-            color: #6b7280;
-
-        }
-
-
-        /* =====================================================
-           INSPECTOR
-        ===================================================== */
-
-        .inspector {
-
-            flex: 1;
-
-            min-height: 0;
-
-            overflow: auto;
-
-            padding: 15px;
-
-            background: #111827;
-
-        }
-
-
-        .inspector-empty {
-
-            height: 100%;
-
-            display: flex;
-
-            align-items: center;
-
-            justify-content: center;
-
-            color: #6b7280;
-
-            text-align: center;
-
-        }
-
-
-        .field-title {
-
-            margin-bottom: 15px;
-
-            font-size: 18px;
-
-            font-weight: bold;
-
-        }
-
-
-        .field-path {
-
-            margin-bottom: 20px;
-
-            padding: 10px;
-
-            background: #1f2937;
-
-            border:
-                1px solid #374151;
-
-            border-radius: 5px;
-
-            font-family:
-                Consolas,
-                monospace;
-
-            font-size: 12px;
-
-            color: #93c5fd;
-
-            word-break: break-all;
-
-        }
-
-
-        .info-grid {
-
-            display: grid;
-
-            grid-template-columns:
-                120px
-                minmax(0, 1fr);
-
-            gap: 1px;
-
-            background: #374151;
-
-            border:
-                1px solid #374151;
-
-            border-radius: 5px;
-
-            overflow: hidden;
-
-        }
-
-
-        .info-label {
-
-            padding: 10px;
-
-            background: #1f2937;
-
-            color: #9ca3af;
-
-            font-size: 12px;
-
-        }
-
-
-        .info-value {
-
-            min-width: 0;
-
-            padding: 10px;
-
-            background: #111827;
-
-            color: #d1d5db;
-
-            font-family:
-                Consolas,
-                monospace;
-
-            font-size: 12px;
-
-            word-break: break-word;
-
-        }
-
-
-        .value-box {
-
-            margin-top: 15px;
-
-        }
-
-
-        .value-box-title {
-
-            margin-bottom: 7px;
-
-            color: #9ca3af;
-
-            font-size: 12px;
-
-        }
-
-
-        .raw-value {
-
-            max-height: 300px;
-
-            overflow: auto;
-
-            padding: 12px;
-
-            background: #1f2937;
-
-            border:
-                1px solid #374151;
-
-            border-radius: 5px;
-
-            font-family:
-                Consolas,
-                monospace;
-
-            font-size: 12px;
-
-            line-height: 1.5;
-
-            white-space: pre-wrap;
-
-            word-break: break-word;
-
-        }
-
-
-        .inspector-buttons {
-
-            display: flex;
-
-            gap: 8px;
-
-            margin-top: 10px;
-
-        }
-
-
-        /* =====================================================
-           TABLE
-        ===================================================== */
-
-        .table-section {
-
-            height: 260px;
-
-            min-height: 180px;
-
-        }
-
-
-        .table-wrapper {
-
-            flex: 1;
-
-            overflow: auto;
-
-            background: #111827;
-
-        }
-
-
-        table {
-
-            width: 100%;
-
-            border-collapse: collapse;
-
-            font-size: 12px;
-
-        }
-
-
-        th,
-        td {
-
-            padding:
-                8px 10px;
-
-            text-align: left;
-
-            border-bottom:
-                1px solid #374151;
-
-            white-space: nowrap;
-
-        }
-
-
-        th {
-
-            position: sticky;
-
-            top: 0;
-
-            background: #374151;
-
-            color: #e5e7eb;
-
-        }
-
-
-        td {
-
-            color: #d1d5db;
-
-        }
-
-
-        tbody tr {
-
-            cursor: pointer;
-
-        }
-
-
-        tbody tr:hover td {
-
-            background: #273449;
-
-        }
-
-
-        .empty-message {
-
-            height: 100%;
-
-            display: flex;
-
-            align-items: center;
-
-            justify-content: center;
-
-            color: #6b7280;
-
-            font-size: 12px;
-
-            padding: 20px;
-
-            text-align: center;
-
-        }
-
-
-        /* =====================================================
-           RESPONSIVE
-        ===================================================== */
-
-        @media (
-            max-width: 900px
-        ) {
-
-            .main {
-
-                height: auto;
-
-                min-height:
-                    calc(100vh - 60px);
-
-            }
-
-
-            .explorer {
-
-                grid-template-columns:
-                    1fr;
-
-                min-height: 700px;
-
-            }
-
-
-            .input-panel {
-
-                height: 220px;
-
-            }
-
-
-            .table-section {
-
-                height: 300px;
-
-            }
-
-        }
-
-    </style>
-
+    #window-table {
+        left: 10px;
+        top: 600px;
+        width: calc(100% - 20px);
+    }
+}
+</style>
 </head>
 
-
 <body>
-
 
 <!-- =========================================================
      TOOLBAR
@@ -914,21 +756,14 @@
 <div class="toolbar">
 
     <div class="toolbar-title">
-
         🧾 JSON Explorer
-
     </div>
-
 
     <div class="toolbar-spacer"></div>
 
-
-    <button
-        onclick="loadExample()"
-    >
+    <button onclick="loadExample()">
         Example
     </button>
-
 
     <button
         class="primary"
@@ -937,13 +772,9 @@
         Explore
     </button>
 
-
-    <button
-        onclick="copyFormatted()"
-    >
+    <button onclick="copyFormatted()">
         Copy JSON
     </button>
-
 
     <button
         class="danger"
@@ -956,48 +787,65 @@
 
 
 <!-- =========================================================
-     MAIN
+     WORKSPACE
 ========================================================= -->
 
-<main class="main">
+<div
+    id="workspace"
+    class="workspace"
+>
 
 
     <!-- =====================================================
          INPUT
     ====================================================== -->
 
-    <section class="input-panel">
+    <section
+        id="window-input"
+        class="window"
+        data-window="input"
+    >
 
-        <div class="panel-header">
+        <div class="window-header">
 
-            JSON Input
+            <span>📄</span>
 
-            <div class="panel-header-spacer"></div>
+            <span class="window-title">
+                JSON Input
+            </span>
 
-            Paste your JSON response here
+            <div class="window-spacer"></div>
+
+            <button
+                class="window-button"
+                onclick="maximizeWindow('window-input')"
+            >
+                □
+            </button>
+
+            <button
+                class="window-button close"
+                onclick="closeWindow('window-input')"
+            >
+                ×
+            </button>
 
         </div>
 
+        <div class="window-body input-body">
 
-        <textarea
-            id="jsonInput"
-            spellcheck="false"
-            placeholder='Paste large JSON here...
+            <textarea
+                id="jsonInput"
+                spellcheck="false"
+                placeholder="Paste JSON here..."
+            ></textarea>
 
-{
-    "response": {
-        "data": [...]
-    }
-}'
-        ></textarea>
-
-
-        <div
-            id="status"
-            class="status"
-        >
-
-            Waiting for JSON...
+            <div
+                id="status"
+                class="status"
+            >
+                Waiting for JSON...
+            </div>
 
         </div>
 
@@ -1008,30 +856,53 @@
          SEARCH
     ====================================================== -->
 
-    <section class="search-panel">
+    <section
+        id="window-search"
+        class="window"
+        data-window="search"
+    >
 
-        <div class="search-icon">
+        <div class="window-header">
 
-            🔎
+            <span>🔎</span>
+
+            <span class="window-title">
+                Search
+            </span>
+
+            <div class="window-spacer"></div>
+
+            <button
+                class="window-button"
+                onclick="maximizeWindow('window-search')"
+            >
+                □
+            </button>
+
+            <button
+                class="window-button close"
+                onclick="closeWindow('window-search')"
+            >
+                ×
+            </button>
 
         </div>
 
+        <div class="window-body search-body">
 
-        <input
-            id="searchInput"
-            class="search-input"
-            type="text"
-            placeholder="Search field name, value, or path..."
-            oninput="searchTree()"
-        >
+            <input
+                id="searchInput"
+                class="search-input"
+                placeholder="Search field, value or path..."
+                oninput="searchTree()"
+            >
 
-
-        <div
-            id="searchCount"
-            class="search-count"
-        >
-
-            0 matches
+            <span
+                id="searchCount"
+                class="search-count"
+            >
+                0 matches
+            </span>
 
         </div>
 
@@ -1039,66 +910,99 @@
 
 
     <!-- =====================================================
-         EXPLORER
+         TREE
     ====================================================== -->
 
-    <section class="explorer">
+    <section
+        id="window-tree"
+        class="window"
+        data-window="tree"
+    >
 
+        <div class="window-header">
 
-        <!-- =================================================
-             TREE
-        ================================================== -->
+            <span>🌳</span>
 
-        <div class="panel">
+            <span class="window-title">
+                Structure
+            </span>
 
-            <div class="panel-header">
+            <div class="window-spacer"></div>
 
-                🌳 Structure
-
-            </div>
-
-
-            <div
-                id="tree"
-                class="tree"
+            <button
+                class="window-button"
+                onclick="maximizeWindow('window-tree')"
             >
+                □
+            </button>
 
-                <div class="tree-empty">
+            <button
+                class="window-button close"
+                onclick="closeWindow('window-tree')"
+            >
+                ×
+            </button>
 
-                    Paste JSON and click
-                    <b>Explore</b>
+        </div>
 
-                </div>
+        <div
+            id="tree"
+            class="window-body tree"
+        >
 
+            <div class="tree-empty">
+                Paste JSON and click
+                <b>Explore</b>
             </div>
 
         </div>
 
-
-        <!-- =================================================
-             INSPECTOR
-        ================================================== -->
-
-        <div class="panel">
-
-            <div class="panel-header">
-
-                🔬 Field Inspector
-
-            </div>
+    </section>
 
 
-            <div
-                id="inspector"
-                class="inspector"
+    <!-- =====================================================
+         INSPECTOR
+    ====================================================== -->
+
+    <section
+        id="window-inspector"
+        class="window"
+        data-window="inspector"
+    >
+
+        <div class="window-header">
+
+            <span>🔬</span>
+
+            <span class="window-title">
+                Field Inspector
+            </span>
+
+            <div class="window-spacer"></div>
+
+            <button
+                class="window-button"
+                onclick="maximizeWindow('window-inspector')"
             >
+                □
+            </button>
 
-                <div class="inspector-empty">
+            <button
+                class="window-button close"
+                onclick="closeWindow('window-inspector')"
+            >
+                ×
+            </button>
 
-                    Select a field from the JSON tree.
+        </div>
 
-                </div>
+        <div
+            id="inspector"
+            class="window-body inspector"
+        >
 
+            <div class="inspector-empty">
+                Select a field from the JSON tree.
             </div>
 
         </div>
@@ -1110,32 +1014,105 @@
          TABLE
     ====================================================== -->
 
-    <section class="panel table-section">
+    <section
+        id="window-table"
+        class="window"
+        data-window="table"
+    >
 
-        <div class="panel-header">
+        <div class="window-header">
 
-            📋 Array / Object Table
+            <span>📋</span>
+
+            <span class="window-title">
+                Array / Object Table
+            </span>
+
+            <div class="window-spacer"></div>
+
+            <button
+                class="window-button"
+                onclick="maximizeWindow('window-table')"
+            >
+                □
+            </button>
+
+            <button
+                class="window-button close"
+                onclick="closeWindow('window-table')"
+            >
+                ×
+            </button>
 
         </div>
 
-
         <div
             id="tableContainer"
-            class="table-wrapper"
+            class="window-body table-wrapper"
         >
 
             <div class="empty-message">
-
-                Select an array or object to inspect it as a table.
-
+                Select an array or object.
             </div>
 
         </div>
 
     </section>
 
+</div>
 
-</main>
+
+<!-- =========================================================
+     WINDOW MANAGER
+========================================================= -->
+
+<div class="window-manager">
+
+    <span class="manager-label">
+        WINDOWS
+    </span>
+
+    <button
+        id="manager-input"
+        class="manager-button"
+        onclick="openWindow('window-input')"
+    >
+        📄
+    </button>
+
+    <button
+        id="manager-search"
+        class="manager-button"
+        onclick="openWindow('window-search')"
+    >
+        🔎
+    </button>
+
+    <button
+        id="manager-tree"
+        class="manager-button"
+        onclick="openWindow('window-tree')"
+    >
+        🌳
+    </button>
+
+    <button
+        id="manager-inspector"
+        class="manager-button"
+        onclick="openWindow('window-inspector')"
+    >
+        🔬
+    </button>
+
+    <button
+        id="manager-table"
+        class="manager-button"
+        onclick="openWindow('window-table')"
+    >
+        📋
+    </button>
+
+</div>
 
 
 <script>
@@ -1150,43 +1127,475 @@ let selectedNode = null;
 
 let selectedPath = "$";
 
+let selectedKey = "root";
+
+let zIndexCounter = 10;
+
 
 /* =========================================================
-   ELEMENTS
+   WINDOW DRAGGING
 ========================================================= */
 
-const input =
-    document.getElementById(
-        "jsonInput"
+document
+    .querySelectorAll(".window")
+    .forEach(
+        setupWindow
     );
 
 
-const tree =
-    document.getElementById(
-        "tree"
+function setupWindow(windowElement) {
+
+    const header =
+        windowElement
+            .querySelector(
+                ".window-header"
+            );
+
+
+    /* Bring to front */
+
+    windowElement.addEventListener(
+        "pointerdown",
+        () => {
+
+            bringToFront(
+                windowElement
+            );
+
+        }
     );
 
 
-const inspector =
-    document.getElementById(
-        "inspector"
+    /* Drag */
+
+    header.addEventListener(
+        "pointerdown",
+        startDrag
     );
 
 
-const status =
-    document.getElementById(
-        "status"
+    /* Double click maximize */
+
+    header.addEventListener(
+        "dblclick",
+        event => {
+
+            if (
+                event.target.closest(
+                    "button"
+                )
+            ) {
+                return;
+            }
+
+            maximizeWindow(
+                windowElement.id
+            );
+
+        }
     );
+
+}
+
+
+function bringToFront(
+    element
+) {
+
+    zIndexCounter++;
+
+    element.style.zIndex =
+        zIndexCounter;
+
+}
 
 
 /* =========================================================
-   PARSE JSON
+   ACTUAL DRAG LOGIC
+========================================================= */
+
+function startDrag(event) {
+
+    if (
+        event.target.closest(
+            "button"
+        )
+    ) {
+        return;
+    }
+
+
+    const windowElement =
+        event.currentTarget
+            .closest(".window");
+
+
+    if (
+        windowElement.classList
+            .contains("maximized")
+    ) {
+        return;
+    }
+
+
+    event.preventDefault();
+
+
+    bringToFront(
+        windowElement
+    );
+
+
+    const workspace =
+        document.getElementById(
+            "workspace"
+        );
+
+
+    const workspaceRect =
+        workspace.getBoundingClientRect();
+
+
+    const windowRect =
+        windowElement.getBoundingClientRect();
+
+
+    const startMouseX =
+        event.clientX;
+
+    const startMouseY =
+        event.clientY;
+
+
+    const startLeft =
+        windowRect.left -
+        workspaceRect.left;
+
+
+    const startTop =
+        windowRect.top -
+        workspaceRect.top;
+
+
+    windowElement
+        .setPointerCapture?.(
+            event.pointerId
+        );
+
+
+    function move(event) {
+
+        let newLeft =
+            startLeft +
+            (
+                event.clientX -
+                startMouseX
+            );
+
+
+        let newTop =
+            startTop +
+            (
+                event.clientY -
+                startMouseY
+            );
+
+
+        const maxLeft =
+            workspace.clientWidth -
+            windowElement.offsetWidth;
+
+
+        const maxTop =
+            workspace.clientHeight -
+            windowElement.offsetHeight;
+
+
+        /*
+         * Keep at least part of the window
+         * inside the workspace.
+         */
+
+        newLeft =
+            Math.max(
+                -windowElement.offsetWidth + 80,
+                Math.min(
+                    newLeft,
+                    workspace.clientWidth - 80
+                )
+            );
+
+
+        newTop =
+            Math.max(
+                0,
+                Math.min(
+                    newTop,
+                    workspace.clientHeight - 50
+                )
+            );
+
+
+        windowElement.style.left =
+            `${newLeft}px`;
+
+        windowElement.style.top =
+            `${newTop}px`;
+
+    }
+
+
+    function stop() {
+
+        document.removeEventListener(
+            "pointermove",
+            move
+        );
+
+        document.removeEventListener(
+            "pointerup",
+            stop
+        );
+
+        document.removeEventListener(
+            "pointercancel",
+            stop
+        );
+
+    }
+
+
+    document.addEventListener(
+        "pointermove",
+        move
+    );
+
+    document.addEventListener(
+        "pointerup",
+        stop
+    );
+
+    document.addEventListener(
+        "pointercancel",
+        stop
+    );
+
+}
+
+
+/* =========================================================
+   MAXIMIZE
+========================================================= */
+
+function maximizeWindow(
+    id
+) {
+
+    const element =
+        document.getElementById(
+            id
+        );
+
+
+    if (!element) {
+        return;
+    }
+
+
+    if (
+        element.classList
+            .contains("maximized")
+    ) {
+
+        element.classList.remove(
+            "maximized"
+        );
+
+
+        if (
+            element.dataset.oldLeft
+        ) {
+
+            element.style.left =
+                element.dataset.oldLeft;
+
+            element.style.top =
+                element.dataset.oldTop;
+
+            element.style.width =
+                element.dataset.oldWidth;
+
+            element.style.height =
+                element.dataset.oldHeight;
+
+        }
+
+    } else {
+
+        element.dataset.oldLeft =
+            element.style.left ||
+            `${element.offsetLeft}px`;
+
+        element.dataset.oldTop =
+            element.style.top ||
+            `${element.offsetTop}px`;
+
+        element.dataset.oldWidth =
+            element.style.width ||
+            `${element.offsetWidth}px`;
+
+        element.dataset.oldHeight =
+            element.style.height ||
+            `${element.offsetHeight}px`;
+
+
+        element.classList.add(
+            "maximized"
+        );
+
+    }
+
+
+    bringToFront(
+        element
+    );
+
+}
+
+
+/* =========================================================
+   CLOSE / OPEN
+========================================================= */
+
+const managerMap = {
+
+    "window-input":
+        "manager-input",
+
+    "window-search":
+        "manager-search",
+
+    "window-tree":
+        "manager-tree",
+
+    "window-inspector":
+        "manager-inspector",
+
+    "window-table":
+        "manager-table"
+
+};
+
+
+function closeWindow(id) {
+
+    const element =
+        document.getElementById(
+            id
+        );
+
+
+    if (!element) {
+        return;
+    }
+
+
+    element.classList.add(
+        "closed"
+    );
+
+
+    updateManager();
+
+}
+
+
+function openWindow(id) {
+
+    const element =
+        document.getElementById(
+            id
+        );
+
+
+    if (!element) {
+        return;
+    }
+
+
+    element.classList.remove(
+        "closed"
+    );
+
+
+    bringToFront(
+        element
+    );
+
+
+    updateManager();
+
+}
+
+
+function updateManager() {
+
+    Object.entries(
+        managerMap
+    ).forEach(
+        ([windowId, buttonId]) => {
+
+            const windowElement =
+                document.getElementById(
+                    windowId
+                );
+
+            const button =
+                document.getElementById(
+                    buttonId
+                );
+
+
+            if (
+                windowElement.classList
+                    .contains("closed")
+            ) {
+
+                button.style.display =
+                    "block";
+
+            } else {
+
+                button.style.display =
+                    "none";
+
+            }
+
+        }
+    );
+
+}
+
+
+/* =========================================================
+   JSON PARSER
 ========================================================= */
 
 function parseJSON() {
 
     const text =
-        input.value.trim();
+        document
+            .getElementById(
+                "jsonInput"
+            )
+            .value
+            .trim();
+
+
+    const status =
+        document.getElementById(
+            "status"
+        );
 
 
     if (!text) {
@@ -1205,9 +1614,7 @@ function parseJSON() {
     try {
 
         rootData =
-            JSON.parse(
-                text
-            );
+            JSON.parse(text);
 
 
         status.className =
@@ -1219,40 +1626,41 @@ function parseJSON() {
 
         renderTree();
 
+
         selectNode(
             rootData,
             "$",
             "root"
         );
 
+
     } catch (error) {
 
         rootData = null;
-
-        tree.innerHTML = `
-            <div class="tree-empty">
-                Invalid JSON
-                <br><br>
-                ${escapeHTML(
-                    error.message
-                )}
-            </div>
-        `;
-
-
-        inspector.innerHTML = `
-            <div class="inspector-empty">
-                Unable to parse JSON.
-            </div>
-        `;
 
 
         status.className =
             "status invalid";
 
         status.textContent =
-            "✕ " +
-            error.message;
+            "✕ " + error.message;
+
+
+        document
+            .getElementById(
+                "tree"
+            )
+            .innerHTML = `
+
+                <div class="tree-empty">
+                    Invalid JSON
+                    <br><br>
+                    ${escapeHTML(
+                        error.message
+                    )}
+                </div>
+
+            `;
 
     }
 
@@ -1260,42 +1668,36 @@ function parseJSON() {
 
 
 /* =========================================================
-   RENDER TREE
+   TREE
 ========================================================= */
 
 function renderTree() {
 
+    const tree =
+        document.getElementById(
+            "tree"
+        );
+
+
     tree.innerHTML = "";
 
 
-    if (
-        rootData === null
-    ) {
-
+    if (rootData === null) {
         return;
-
     }
 
 
-    const root =
+    tree.appendChild(
         createTreeNode(
             "root",
             rootData,
             "$",
             true
-        );
-
-
-    tree.appendChild(
-        root
+        )
     );
 
 }
 
-
-/* =========================================================
-   CREATE TREE NODE
-========================================================= */
 
 function createTreeNode(
     key,
@@ -1335,9 +1737,7 @@ function createTreeNode(
 
     const children =
         isObject
-            ? Object.entries(
-                value
-            )
+            ? Object.entries(value)
             : [];
 
 
@@ -1372,9 +1772,7 @@ function createTreeNode(
     if (key === "root") {
 
         keyElement.textContent =
-            getTypeLabel(
-                value
-            );
+            getTypeLabel(value);
 
         keyElement.className =
             "tree-key";
@@ -1382,51 +1780,24 @@ function createTreeNode(
     } else {
 
         keyElement.textContent =
-            Array.isArray(
-                value
-            )
+            Array.isArray(value)
                 ? `[${key}]`
                 : key;
 
         keyElement.className =
-            Array.isArray(
-                value
-            )
+            Array.isArray(value)
                 ? "tree-index"
                 : "tree-key";
 
     }
 
 
-    const type =
-        document.createElement(
-            "span"
-        );
+    row.appendChild(toggle);
+
+    row.appendChild(keyElement);
 
 
-    type.className =
-        "tree-type";
-
-
-    type.textContent =
-        getTypeLabel(
-            value
-        );
-
-
-    row.appendChild(
-        toggle
-    );
-
-
-    row.appendChild(
-        keyElement
-    );
-
-
-    if (
-        !hasChildren
-    ) {
+    if (!hasChildren) {
 
         const valueElement =
             document.createElement(
@@ -1436,15 +1807,11 @@ function createTreeNode(
 
         valueElement.className =
             "tree-value " +
-            getValueClass(
-                value
-            );
+            getValueClass(value);
 
 
         valueElement.textContent =
-            formatShortValue(
-                value
-            );
+            formatShortValue(value);
 
 
         row.appendChild(
@@ -1453,11 +1820,26 @@ function createTreeNode(
 
     } else {
 
-        row.appendChild(
-            type
-        );
+        const type =
+            document.createElement(
+                "span"
+            );
+
+
+        type.className =
+            "tree-type";
+
+
+        type.textContent =
+            getTypeLabel(value);
+
+
+        row.appendChild(type);
 
     }
+
+
+    let childrenContainer = null;
 
 
     row.onclick =
@@ -1473,9 +1855,7 @@ function createTreeNode(
             );
 
 
-            if (
-                hasChildren
-            ) {
+            if (hasChildren) {
 
                 childrenContainer
                     .classList.toggle(
@@ -1485,9 +1865,8 @@ function createTreeNode(
 
                 toggle.textContent =
                     childrenContainer
-                        .classList.contains(
-                            "hidden"
-                        )
+                        .classList
+                        .contains("hidden")
                         ? "▶"
                         : "▼";
 
@@ -1496,16 +1875,12 @@ function createTreeNode(
         };
 
 
-    wrapper.appendChild(
-        row
-    );
+    wrapper.appendChild(row);
 
 
-    if (
-        hasChildren
-    ) {
+    if (hasChildren) {
 
-        const childrenContainer =
+        childrenContainer =
             document.createElement(
                 "div"
             );
@@ -1515,13 +1890,11 @@ function createTreeNode(
             "tree-children";
 
 
-        if (
-            !expanded
-        ) {
+        if (!expanded) {
 
-            childrenContainer.classList.add(
-                "hidden"
-            );
+            childrenContainer
+                .classList
+                .add("hidden");
 
         }
 
@@ -1530,22 +1903,18 @@ function createTreeNode(
             ([childKey, childValue]) => {
 
                 const childPath =
-                    Array.isArray(
-                        value
-                    )
+                    Array.isArray(value)
                         ? `${path}[${childKey}]`
                         : `${path}.${childKey}`;
 
 
                 childrenContainer.appendChild(
-
                     createTreeNode(
                         childKey,
                         childValue,
                         childPath,
                         false
                     )
-
                 );
 
             }
@@ -1580,6 +1949,9 @@ function selectNode(
     selectedPath =
         path;
 
+    selectedKey =
+        key;
+
 
     document
         .querySelectorAll(
@@ -1594,10 +1966,15 @@ function selectNode(
 
 
     const row =
-        document.querySelector(
-            `.tree-row[data-path="${cssEscape(
+        [
+            ...document.querySelectorAll(
+                ".tree-row"
+            )
+        ]
+        .find(
+            element =>
+                element.dataset.path ===
                 path
-            )}"]`
         );
 
 
@@ -1628,13 +2005,15 @@ function selectNode(
 
     } else {
 
-        document.getElementById(
-            "tableContainer"
-        ).innerHTML = `
-            <div class="empty-message">
-                Select an object or array to view it as a table.
-            </div>
-        `;
+        document
+            .getElementById(
+                "tableContainer"
+            )
+            .innerHTML = `
+                <div class="empty-message">
+                    Select an object or array.
+                </div>
+            `;
 
     }
 
@@ -1651,12 +2030,6 @@ function renderInspector(
     key
 ) {
 
-    const type =
-        getTypeLabel(
-            value
-        );
-
-
     let serialized;
 
 
@@ -1672,117 +2045,92 @@ function renderInspector(
     } catch {
 
         serialized =
-            String(
-                value
-            );
+            String(value);
 
     }
 
 
-    inspector.innerHTML = `
+    document
+        .getElementById(
+            "inspector"
+        )
+        .innerHTML = `
 
-        <div class="field-title">
-
-            ${escapeHTML(
-                key === "root"
-                    ? "Root"
-                    : String(key)
-            )}
-
-        </div>
-
-
-        <div class="field-path">
-
-            ${escapeHTML(
-                path
-            )}
-
-        </div>
-
-
-        <div class="info-grid">
-
-            <div class="info-label">
-                Type
-            </div>
-
-            <div class="info-value">
+            <div class="field-title">
                 ${escapeHTML(
-                    type
+                    key === "root"
+                        ? "Root"
+                        : String(key)
                 )}
             </div>
 
-
-            <div class="info-label">
-                Value
+            <div class="field-path">
+                ${escapeHTML(path)}
             </div>
 
-            <div class="info-value">
-                ${escapeHTML(
-                    getSummary(
-                        value
-                    )
-                )}
-            </div>
+            <div class="info-grid">
 
+                <div class="info-label">
+                    Type
+                </div>
 
-            ${
-                Array.isArray(
-                    value
-                )
-                    ? `
-                        <div class="info-label">
-                            Length
-                        </div>
+                <div class="info-value">
+                    ${escapeHTML(
+                        getTypeLabel(value)
+                    )}
+                </div>
 
-                        <div class="info-value">
-                            ${value.length}
-                        </div>
-                    `
-                    : ""
-            }
+                <div class="info-label">
+                    Value
+                </div>
 
-        </div>
+                <div class="info-value">
+                    ${escapeHTML(
+                        getSummary(value)
+                    )}
+                </div>
 
+                ${
+                    Array.isArray(value)
+                        ? `
+                            <div class="info-label">
+                                Length
+                            </div>
 
-        <div class="value-box">
-
-            <div class="value-box-title">
-
-                Raw Value
-
-            </div>
-
-
-            <div class="raw-value">
-
-                ${escapeHTML(
-                    serialized
-                )}
+                            <div class="info-value">
+                                ${value.length}
+                            </div>
+                        `
+                        : ""
+                }
 
             </div>
 
+            <div class="value-box">
 
-            <div class="inspector-buttons">
+                <div class="value-box-title">
+                    Raw Value
+                </div>
 
-                <button
-                    onclick="copyPath()"
-                >
-                    📍 Copy Path
-                </button>
+                <div class="raw-value">
+                    ${escapeHTML(
+                        serialized
+                    )}
+                </div>
 
+                <div class="inspector-buttons">
 
-                <button
-                    onclick="copyValue()"
-                >
-                    📋 Copy Value
-                </button>
+                    <button onclick="copyPath()">
+                        📍 Copy Path
+                    </button>
+
+                    <button onclick="copyValue()">
+                        📋 Copy Value
+                    </button>
+
+                </div>
 
             </div>
-
-        </div>
-
     `;
 
 }
@@ -1792,9 +2140,7 @@ function renderInspector(
    TABLE
 ========================================================= */
 
-function renderTable(
-    value
-) {
+function renderTable(value) {
 
     const container =
         document.getElementById(
@@ -1805,15 +2151,9 @@ function renderTable(
     let rows = [];
 
 
-    if (
-        Array.isArray(
-            value
-        )
-    ) {
+    if (Array.isArray(value)) {
 
-        if (
-            value.length === 0
-        ) {
+        if (!value.length) {
 
             container.innerHTML = `
                 <div class="empty-message">
@@ -1837,7 +2177,8 @@ function renderTable(
 
             rows =
                 value.map(
-                    flattenObject
+                    item =>
+                        flattenObject(item)
                 );
 
         } else {
@@ -1854,29 +2195,24 @@ function renderTable(
     } else {
 
         rows = [
-            flattenObject(
-                value
-            )
+            flattenObject(value)
         ];
 
     }
 
 
-    const columns = [
-        ...new Set(
-            rows.flatMap(
-                row =>
-                    Object.keys(
-                        row
-                    )
+    const columns =
+        [
+            ...new Set(
+                rows.flatMap(
+                    row =>
+                        Object.keys(row)
+                )
             )
-        )
-    ];
+        ];
 
 
-    if (
-        columns.length === 0
-    ) {
+    if (!columns.length) {
 
         container.innerHTML = `
             <div class="empty-message">
@@ -1891,9 +2227,7 @@ function renderTable(
 
     let html = `
         <table>
-
             <thead>
-
                 <tr>
     `;
 
@@ -1915,7 +2249,6 @@ function renderTable(
 
     html += `
                 </tr>
-
             </thead>
 
             <tbody>
@@ -1927,9 +2260,7 @@ function renderTable(
 
             html += `
                 <tr
-                    onclick="selectTableRow(
-                        ${index}
-                    )"
+                    onclick="selectTableRow(${index})"
                 >
             `;
 
@@ -1937,15 +2268,11 @@ function renderTable(
             columns.forEach(
                 column => {
 
-                    const cell =
-                        row[column];
-
-
                     html += `
                         <td>
                             ${escapeHTML(
                                 formatShortValue(
-                                    cell
+                                    row[column]
                                 )
                             )}
                         </td>
@@ -1965,7 +2292,6 @@ function renderTable(
 
     html += `
             </tbody>
-
         </table>
     `;
 
@@ -1976,38 +2302,20 @@ function renderTable(
 }
 
 
-/* =========================================================
-   TABLE ROW SELECT
-========================================================= */
-
-function selectTableRow(
-    index
-) {
+function selectTableRow(index) {
 
     if (
         !Array.isArray(
             selectedNode
         )
     ) {
-
         return;
-
     }
 
 
-    const item =
-        selectedNode[
-            index
-        ];
-
-
-    const path =
-        `${selectedPath}[${index}]`;
-
-
     selectNode(
-        item,
-        path,
+        selectedNode[index],
+        `${selectedPath}[${index}]`,
         index
     );
 
@@ -2047,18 +2355,9 @@ function searchTree() {
             );
 
 
-            if (
-                !query
-            ) {
-
+            if (!query) {
                 return;
-
             }
-
-
-            const path =
-                row.dataset.path
-                    .toLowerCase();
 
 
             const text =
@@ -2066,13 +2365,14 @@ function searchTree() {
                     .toLowerCase();
 
 
+            const path =
+                row.dataset.path
+                    .toLowerCase();
+
+
             if (
-                text.includes(
-                    query
-                ) ||
-                path.includes(
-                    query
-                )
+                text.includes(query) ||
+                path.includes(query)
             ) {
 
                 row.classList.add(
@@ -2087,16 +2387,18 @@ function searchTree() {
     );
 
 
-    document.getElementById(
-        "searchCount"
-    ).textContent =
-        query
-            ? `${count} match${
-                count === 1
-                    ? ""
-                    : "es"
-            }`
-            : "0 matches";
+    document
+        .getElementById(
+            "searchCount"
+        )
+        .textContent =
+            query
+                ? `${count} match${
+                    count === 1
+                        ? ""
+                        : "es"
+                }`
+                : "0 matches";
 
 }
 
@@ -2118,48 +2420,44 @@ function flattenObject(
 
         result[
             prefix || "value"
-        ] =
-            object;
+        ] = object;
 
         return result;
 
     }
 
 
-    Object.entries(
-        object
-    ).forEach(
-        ([key, value]) => {
+    Object.entries(object)
+        .forEach(
+            ([key, value]) => {
 
-            const path =
-                prefix
-                    ? `${prefix}.${key}`
-                    : key;
+                const path =
+                    prefix
+                        ? `${prefix}.${key}`
+                        : key;
 
 
-            if (
-                value !== null &&
-                typeof value === "object" &&
-                !Array.isArray(
-                    value
-                )
-            ) {
+                if (
+                    value !== null &&
+                    typeof value === "object" &&
+                    !Array.isArray(value)
+                ) {
 
-                flattenObject(
-                    value,
-                    path,
-                    result
-                );
+                    flattenObject(
+                        value,
+                        path,
+                        result
+                    );
 
-            } else {
+                } else {
 
-                result[path] =
-                    value;
+                    result[path] =
+                        value;
+
+                }
 
             }
-
-        }
-    );
+        );
 
 
     return result;
@@ -2168,282 +2466,182 @@ function flattenObject(
 
 
 /* =========================================================
-   TYPE
+   HELPERS
 ========================================================= */
 
-function getTypeLabel(
-    value
-) {
+function getTypeLabel(value) {
 
-    if (
-        value === null
-    ) {
-
+    if (value === null) {
         return "null";
-
     }
 
-
-    if (
-        Array.isArray(
-            value
-        )
-    ) {
-
+    if (Array.isArray(value)) {
         return `array (${value.length})`;
-
     }
 
-
-    if (
-        typeof value === "object"
-    ) {
-
+    if (typeof value === "object") {
         return `object (${
-            Object.keys(
-                value
-            ).length
+            Object.keys(value).length
         } fields)`;
-
     }
-
 
     return typeof value;
 
 }
 
 
-/* =========================================================
-   VALUE CLASS
-========================================================= */
+function getValueClass(value) {
 
-function getValueClass(
-    value
-) {
-
-    if (
-        value === null
-    ) {
-
+    if (value === null) {
         return "type-null";
-
     }
 
-
-    switch (
-        typeof value
-    ) {
-
-        case "string":
-            return "type-string";
-
-        case "number":
-            return "type-number";
-
-        case "boolean":
-            return "type-boolean";
-
-        default:
-            return "";
-
+    if (typeof value === "string") {
+        return "type-string";
     }
+
+    if (typeof value === "number") {
+        return "type-number";
+    }
+
+    if (typeof value === "boolean") {
+        return "type-boolean";
+    }
+
+    return "";
 
 }
 
 
-/* =========================================================
-   SHORT VALUE
-========================================================= */
+function formatShortValue(value) {
 
-function formatShortValue(
-    value
-) {
-
-    if (
-        value === null
-    ) {
-
+    if (value === null) {
         return "null";
-
     }
 
-
-    if (
-        typeof value === "string"
-    ) {
-
+    if (typeof value === "string") {
         return `"${value}"`;
-
     }
 
+    if (typeof value === "object") {
 
-    if (
-        typeof value === "object"
-    ) {
-
-        if (
-            Array.isArray(
-                value
-            )
-        ) {
-
-            return `Array [${
-                value.length
-            }]`;
-
+        if (Array.isArray(value)) {
+            return `Array [${value.length}]`;
         }
 
-
         return `Object {${
-            Object.keys(
-                value
-            ).length
+            Object.keys(value).length
         }}`;
 
     }
 
-
-    return String(
-        value
-    );
+    return String(value);
 
 }
 
 
-/* =========================================================
-   SUMMARY
-========================================================= */
+function getSummary(value) {
 
-function getSummary(
-    value
-) {
-
-    if (
-        value === null
-    ) {
-
+    if (value === null) {
         return "null";
-
     }
 
-
-    if (
-        typeof value === "string"
-    ) {
-
+    if (typeof value === "string") {
         return value;
+    }
+
+    if (typeof value === "object") {
+
+        if (Array.isArray(value)) {
+            return `${value.length} items`;
+        }
+
+        return `${
+            Object.keys(value).length
+        } fields`;
 
     }
 
+    return String(value);
 
-    if (
-        typeof value === "object"
-    ) {
-
-        return Array.isArray(
-            value
-        )
-            ? `${value.length} items`
-            : `${Object.keys(
-                value
-            ).length} fields`;
-
-    }
+}
 
 
-    return String(
-        value
-    );
+function escapeHTML(value) {
+
+    return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
 
 }
 
 
 /* =========================================================
-   COPY PATH
+   COPY
 ========================================================= */
 
-async function copyPath() {
+async function copyText(text) {
 
-    if (
-        !selectedPath
-    ) {
+    try {
 
-        return;
+        await navigator.clipboard.writeText(
+            text
+        );
+
+    } catch (error) {
+
+        console.error(error);
 
     }
 
+}
 
-    await copyText(
+
+function copyPath() {
+
+    copyText(
         selectedPath
     );
 
 }
 
 
-/* =========================================================
-   COPY VALUE
-========================================================= */
-
-async function copyValue() {
+function copyValue() {
 
     if (
         selectedNode === null ||
         selectedNode === undefined
     ) {
-
         return;
-
     }
 
 
-    let value;
-
-
-    try {
-
-        value =
-            typeof selectedNode ===
-            "string"
-                ? selectedNode
-                : JSON.stringify(
-                    selectedNode,
-                    null,
-                    4
-                );
-
-    } catch {
-
-        value =
-            String(
-                selectedNode
+    const value =
+        typeof selectedNode === "string"
+            ? selectedNode
+            : JSON.stringify(
+                selectedNode,
+                null,
+                4
             );
 
-    }
 
-
-    await copyText(
-        value
-    );
+    copyText(value);
 
 }
 
 
-/* =========================================================
-   COPY JSON
-========================================================= */
+function copyFormatted() {
 
-async function copyFormatted() {
-
-    if (
-        rootData === null
-    ) {
-
+    if (rootData === null) {
         return;
-
     }
 
 
-    await copyText(
+    copyText(
         JSON.stringify(
             rootData,
             null,
@@ -2455,41 +2653,16 @@ async function copyFormatted() {
 
 
 /* =========================================================
-   COPY
-========================================================= */
-
-async function copyText(
-    text
-) {
-
-    try {
-
-        await navigator
-            .clipboard
-            .writeText(
-                text
-            );
-
-    } catch (
-        error
-    ) {
-
-        console.error(
-            error
-        );
-
-    }
-
-}
-
-
-/* =========================================================
    EXAMPLE
 ========================================================= */
 
 function loadExample() {
 
-    input.value =
+    document
+        .getElementById(
+            "jsonInput"
+        )
+        .value =
 `{
     "success": true,
     "response": {
@@ -2557,43 +2730,69 @@ function clearAll() {
 
     selectedPath = "$";
 
-
-    input.value = "";
-
-
-    tree.innerHTML = `
-        <div class="tree-empty">
-            Paste JSON and click
-            <b>Explore</b>
-        </div>
-    `;
+    selectedKey = "root";
 
 
-    inspector.innerHTML = `
-        <div class="inspector-empty">
-            Select a field from the JSON tree.
-        </div>
-    `;
+    document
+        .getElementById(
+            "jsonInput"
+        )
+        .value = "";
 
 
-    document.getElementById(
-        "tableContainer"
-    ).innerHTML = `
-        <div class="empty-message">
-            Select an array or object to inspect it as a table.
-        </div>
-    `;
+    document
+        .getElementById(
+            "tree"
+        )
+        .innerHTML = `
+            <div class="tree-empty">
+                Paste JSON and click
+                <b>Explore</b>
+            </div>
+        `;
 
 
-    document.getElementById(
-        "searchInput"
-    ).value = "";
+    document
+        .getElementById(
+            "inspector"
+        )
+        .innerHTML = `
+            <div class="inspector-empty">
+                Select a field from the JSON tree.
+            </div>
+        `;
 
 
-    document.getElementById(
-        "searchCount"
-    ).textContent =
-        "0 matches";
+    document
+        .getElementById(
+            "tableContainer"
+        )
+        .innerHTML = `
+            <div class="empty-message">
+                Select an array or object.
+            </div>
+        `;
+
+
+    document
+        .getElementById(
+            "searchInput"
+        )
+        .value = "";
+
+
+    document
+        .getElementById(
+            "searchCount"
+        )
+        .textContent =
+            "0 matches";
+
+
+    const status =
+        document.getElementById(
+            "status"
+        );
 
 
     status.className =
@@ -2607,101 +2806,12 @@ function clearAll() {
 
 
 /* =========================================================
-   CSS ESCAPE
+   INIT
 ========================================================= */
 
-function cssEscape(
-    value
-) {
-
-    if (
-        window.CSS &&
-        CSS.escape
-    ) {
-
-        return CSS.escape(
-            value
-        );
-
-    }
-
-
-    return value
-        .replace(
-            /([^\w-])/g,
-            "\\$1"
-        );
-
-}
-
-
-/* =========================================================
-   HTML ESCAPE
-========================================================= */
-
-function escapeHTML(
-    value
-) {
-
-    return String(
-        value
-    )
-
-        .replace(
-            /&/g,
-            "&amp;"
-        )
-
-        .replace(
-            /</g,
-            "&lt;"
-        )
-
-        .replace(
-            />/g,
-            "&gt;"
-        )
-
-        .replace(
-            /"/g,
-            "&quot;"
-        )
-
-        .replace(
-            /'/g,
-            "&#039;"
-        );
-
-}
-
-
-/* =========================================================
-   INITIALIZE
-========================================================= */
-
-document
-    .getElementById(
-        "searchInput"
-    )
-    .addEventListener(
-        "keydown",
-        event => {
-
-            if (
-                event.key ===
-                "Enter"
-            ) {
-
-                searchTree();
-
-            }
-
-        }
-    );
+updateManager();
 
 </script>
 
-
 </body>
-
 </html>
