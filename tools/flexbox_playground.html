@@ -424,6 +424,7 @@
 
 <body>
 
+<div id="app">
 
 <!-- =========================================================
      TOOLBAR
@@ -442,7 +443,7 @@
 
 
     <button
-        onclick="resetSettings()"
+        @click="resetSettings"
     >
         Reset
     </button>
@@ -473,24 +474,17 @@
         <div class="preview-area">
 
             <div
-                id="flexContainer"
                 class="flex-container"
+                :style="containerStyle"
             >
 
-                <div class="flex-item">
-                    1
-                </div>
-
-                <div class="flex-item">
-                    2
-                </div>
-
-                <div class="flex-item">
-                    3
-                </div>
-
-                <div class="flex-item">
-                    4
+                <div
+                    v-for="n in items"
+                    :key="n"
+                    class="flex-item"
+                    :style="itemStyle"
+                >
+                    {{ n }}
                 </div>
 
             </div>
@@ -525,8 +519,7 @@
                 </label>
 
                 <select
-                    id="flexDirection"
-                    onchange="update()"
+                    v-model="flexDirection"
                 >
 
                     <option value="row">
@@ -557,8 +550,7 @@
                 </label>
 
                 <select
-                    id="flexWrap"
-                    onchange="update()"
+                    v-model="flexWrap"
                 >
 
                     <option value="nowrap">
@@ -585,8 +577,7 @@
                 </label>
 
                 <select
-                    id="justifyContent"
-                    onchange="update()"
+                    v-model="justifyContent"
                 >
 
                     <option value="flex-start">
@@ -625,8 +616,7 @@
                 </label>
 
                 <select
-                    id="alignItems"
-                    onchange="update()"
+                    v-model="alignItems"
                 >
 
                     <option value="stretch">
@@ -661,8 +651,7 @@
                 </label>
 
                 <select
-                    id="alignContent"
-                    onchange="update()"
+                    v-model="alignContent"
                 >
 
                     <option value="normal">
@@ -709,11 +698,9 @@
                 </label>
 
                 <input
-                    id="gap"
+                    v-model.number="gap"
                     type="number"
                     min="0"
-                    value="10"
-                    onchange="update()"
                 >
 
             </div>
@@ -741,12 +728,10 @@
                 </label>
 
                 <input
-                    id="itemCount"
+                    v-model.number="itemCount"
                     type="number"
                     min="1"
                     max="12"
-                    value="4"
-                    onchange="updateItems()"
                 >
 
             </div>
@@ -759,11 +744,9 @@
                 </label>
 
                 <input
-                    id="itemWidth"
+                    v-model.number="itemWidth"
                     type="number"
                     min="20"
-                    value="70"
-                    onchange="update()"
                 >
 
             </div>
@@ -776,11 +759,9 @@
                 </label>
 
                 <input
-                    id="itemHeight"
+                    v-model.number="itemHeight"
                     type="number"
                     min="20"
-                    value="70"
-                    onchange="update()"
                 >
 
             </div>
@@ -802,14 +783,13 @@
 
 
             <div
-                id="generatedCode"
                 class="code"
-            ></div>
+            >{{ generatedCode }}</div>
 
 
             <button
                 class="copy-button"
-                onclick="copyCode()"
+                @click="copyCode"
             >
                 Copy Tailwind Classes
             </button>
@@ -822,469 +802,383 @@
 </div>
 
 
+</div>
+
+
+<script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
+
 <script>
 
-/* =========================================================
-   ELEMENTS
-========================================================= */
+new Vue({
 
-const container =
-    document.getElementById(
-        "flexContainer"
-    );
+    el: "#app",
 
 
-/* =========================================================
-   UPDATE
-========================================================= */
+    data: {
 
-function update() {
+        flexDirection: "row",
 
-    const direction =
-        document.getElementById(
-            "flexDirection"
-        ).value;
+        flexWrap: "nowrap",
 
+        justifyContent: "flex-start",
 
-    const wrap =
-        document.getElementById(
-            "flexWrap"
-        ).value;
+        alignItems: "stretch",
 
+        alignContent: "normal",
 
-    const justify =
-        document.getElementById(
-            "justifyContent"
-        ).value;
+        gap: 10,
 
+        itemCount: 4,
 
-    const align =
-        document.getElementById(
-            "alignItems"
-        ).value;
+        itemWidth: 70,
 
+        itemHeight: 70,
 
-    const alignContent =
-        document.getElementById(
-            "alignContent"
-        ).value;
-
-
-    const gap =
-        document.getElementById(
-            "gap"
-        ).value;
-
-
-    const itemWidth =
-        document.getElementById(
-            "itemWidth"
-        ).value;
-
-
-    const itemHeight =
-        document.getElementById(
-            "itemHeight"
-        ).value;
-
-
-    /* -----------------------------------------------------
-       Apply CSS
-    ----------------------------------------------------- */
-
-    container.style.flexDirection =
-        direction;
-
-    container.style.flexWrap =
-        wrap;
-
-    container.style.justifyContent =
-        justify;
-
-    container.style.alignItems =
-        align;
-
-    container.style.alignContent =
-        alignContent;
-
-    container.style.gap =
-        `${gap}px`;
-
-
-    document
-        .querySelectorAll(
-            ".flex-item"
-        )
-        .forEach(item => {
-
-            item.style.width =
-                `${itemWidth}px`;
-
-            item.style.height =
-                `${itemHeight}px`;
-
-        });
-
-
-    /* -----------------------------------------------------
-       Tailwind
-    ----------------------------------------------------- */
-
-    const classes = [];
-
-
-    classes.push(
-        "flex"
-    );
-
-
-    if (
-        direction !==
-        "row"
-    ) {
-
-        classes.push(
-            "flex-" +
-            direction.replace(
-                "row-",
-                ""
-            )
-        );
-
-    }
-
-
-    if (
-        wrap !==
-        "nowrap"
-    ) {
-
-        classes.push(
-            "flex-" +
-            wrap
-        );
-
-    }
-
-
-    const justifyMap = {
-
-        "flex-start":
-            "justify-start",
-
-        "flex-end":
-            "justify-end",
-
-        "center":
-            "justify-center",
-
-        "space-between":
-            "justify-between",
-
-        "space-around":
-            "justify-around",
-
-        "space-evenly":
-            "justify-evenly"
-
-    };
-
-
-    if (
-        justifyMap[
-            justify
+        items: [
+            1,
+            2,
+            3,
+            4
         ]
-    ) {
 
-        classes.push(
-            justifyMap[
-                justify
-            ]
-        );
-
-    }
+    },
 
 
-    const alignMap = {
+    computed: {
 
-        "flex-start":
-            "items-start",
+        containerStyle() {
 
-        "flex-end":
-            "items-end",
+            return {
 
-        "center":
-            "items-center",
+                flexDirection:
+                    this.flexDirection,
 
-        "baseline":
-            "items-baseline",
+                flexWrap:
+                    this.flexWrap,
 
-        "stretch":
-            "items-stretch"
+                justifyContent:
+                    this.justifyContent,
 
-    };
+                alignItems:
+                    this.alignItems,
 
+                alignContent:
+                    this.alignContent,
 
-    if (
-        alignMap[
-            align
-        ]
-    ) {
+                gap:
+                    `${this.gap}px`
 
-        classes.push(
-            alignMap[
-                align
-            ]
-        );
+            };
 
-    }
+        },
 
 
-    const gapClass =
-        gapToTailwind(
-            gap
-        );
+        itemStyle() {
+
+            return {
+
+                width:
+                    `${this.itemWidth}px`,
+
+                height:
+                    `${this.itemHeight}px`
+
+            };
+
+        },
 
 
-    if (gapClass) {
+        generatedCode() {
 
-        classes.push(
-            gapClass
-        );
-
-    }
+            const classes = [];
 
 
-    document
-        .getElementById(
-            "generatedCode"
-        )
-        .textContent =
-            classes.join(
+            classes.push(
+                "flex"
+            );
+
+
+            if (
+                this.flexDirection !==
+                "row"
+            ) {
+
+                classes.push(
+                    "flex-" +
+                    this.flexDirection.replace(
+                        "row-",
+                        ""
+                    )
+                );
+
+            }
+
+
+            if (
+                this.flexWrap !==
+                "nowrap"
+            ) {
+
+                classes.push(
+                    "flex-" +
+                    this.flexWrap
+                );
+
+            }
+
+
+            const justifyMap = {
+
+                "flex-start":
+                    "justify-start",
+
+                "flex-end":
+                    "justify-end",
+
+                "center":
+                    "justify-center",
+
+                "space-between":
+                    "justify-between",
+
+                "space-around":
+                    "justify-around",
+
+                "space-evenly":
+                    "justify-evenly"
+
+            };
+
+
+            if (
+                justifyMap[
+                    this.justifyContent
+                ]
+            ) {
+
+                classes.push(
+                    justifyMap[
+                        this.justifyContent
+                    ]
+                );
+
+            }
+
+
+            const alignMap = {
+
+                "flex-start":
+                    "items-start",
+
+                "flex-end":
+                    "items-end",
+
+                "center":
+                    "items-center",
+
+                "baseline":
+                    "items-baseline",
+
+                "stretch":
+                    "items-stretch"
+
+            };
+
+
+            if (
+                alignMap[
+                    this.alignItems
+                ]
+            ) {
+
+                classes.push(
+                    alignMap[
+                        this.alignItems
+                    ]
+                );
+
+            }
+
+
+            const gapClass =
+                this.gapToTailwind(
+                    this.gap
+                );
+
+
+            if (gapClass) {
+
+                classes.push(
+                    gapClass
+                );
+
+            }
+
+
+            return classes.join(
                 " "
             );
 
-}
+        }
+
+    },
 
 
-/* =========================================================
-   GAP → TAILWIND
-========================================================= */
+    watch: {
 
-function gapToTailwind(
-    value
-) {
+        itemCount() {
 
-    const map = {
+            this.updateItems();
 
-        0: "gap-0",
+        }
 
-        1: "gap-1",
-
-        2: "gap-2",
-
-        4: "gap-4",
-
-        6: "gap-6",
-
-        8: "gap-8",
-
-        10: "gap-10",
-
-        12: "gap-12",
-
-        16: "gap-16",
-
-        20: "gap-20",
-
-        24: "gap-24"
-
-    };
+    },
 
 
-    return (
-        map[value] ||
-        `gap-[${value}px]`
-    );
+    methods: {
 
-}
+        gapToTailwind(
+            value
+        ) {
 
+            const map = {
 
-/* =========================================================
-   UPDATE ITEMS
-========================================================= */
+                0: "gap-0",
 
-function updateItems() {
+                1: "gap-1",
 
-    let count =
-        parseInt(
-            document.getElementById(
-                "itemCount"
-            ).value
-        );
+                2: "gap-2",
 
+                4: "gap-4",
 
-    count =
-        Math.max(
-            1,
-            Math.min(
-                12,
-                count
-            )
-        );
+                6: "gap-6",
 
+                8: "gap-8",
 
-    document.getElementById(
-        "itemCount"
-    ).value =
-        count;
+                10: "gap-10",
+
+                12: "gap-12",
+
+                16: "gap-16",
+
+                20: "gap-20",
+
+                24: "gap-24"
+
+            };
 
 
-    container.innerHTML = "";
-
-
-    for (
-        let i = 1;
-        i <= count;
-        i++
-    ) {
-
-        const item =
-            document.createElement(
-                "div"
+            return (
+                map[value] ||
+                `gap-[${value}px]`
             );
 
-
-        item.className =
-            "flex-item";
+        },
 
 
-        item.textContent =
-            i;
+        updateItems() {
+
+            let count =
+                parseInt(
+                    this.itemCount
+                );
 
 
-        container.appendChild(
-            item
-        );
+            count =
+                Math.max(
+                    1,
+                    Math.min(
+                        12,
+                        count
+                    )
+                );
+
+
+            this.itemCount =
+                count;
+
+
+            this.items =
+                Array.from(
+                    {
+                        length: count
+                    },
+                    (
+                        _,
+                        index
+                    ) =>
+                        index + 1
+                );
+
+        },
+
+
+        resetSettings() {
+
+            this.flexDirection =
+                "row";
+
+            this.flexWrap =
+                "nowrap";
+
+            this.justifyContent =
+                "flex-start";
+
+            this.alignItems =
+                "stretch";
+
+            this.alignContent =
+                "normal";
+
+            this.gap =
+                10;
+
+            this.itemCount =
+                4;
+
+            this.itemWidth =
+                70;
+
+            this.itemHeight =
+                70;
+
+            this.updateItems();
+
+        },
+
+
+        async copyCode() {
+
+            try {
+
+                await navigator
+                    .clipboard
+                    .writeText(
+                        this.generatedCode
+                    );
+
+
+                alert(
+                    "Tailwind classes copied!"
+                );
+
+            } catch (error) {
+
+                console.error(
+                    error
+                );
+
+                alert(
+                    "Could not copy."
+                );
+
+            }
+
+        }
 
     }
 
-
-    update();
-
-}
-
-
-/* =========================================================
-   RESET
-========================================================= */
-
-function resetSettings() {
-
-    document.getElementById(
-        "flexDirection"
-    ).value =
-        "row";
-
-
-    document.getElementById(
-        "flexWrap"
-    ).value =
-        "nowrap";
-
-
-    document.getElementById(
-        "justifyContent"
-    ).value =
-        "flex-start";
-
-
-    document.getElementById(
-        "alignItems"
-    ).value =
-        "stretch";
-
-
-    document.getElementById(
-        "alignContent"
-    ).value =
-        "normal";
-
-
-    document.getElementById(
-        "gap"
-    ).value =
-        "10";
-
-
-    document.getElementById(
-        "itemCount"
-    ).value =
-        "4";
-
-
-    document.getElementById(
-        "itemWidth"
-    ).value =
-        "70";
-
-
-    document.getElementById(
-        "itemHeight"
-    ).value =
-        "70";
-
-
-    updateItems();
-
-}
-
-
-/* =========================================================
-   COPY
-========================================================= */
-
-async function copyCode() {
-
-    const code =
-        document.getElementById(
-            "generatedCode"
-        ).textContent;
-
-
-    try {
-
-        await navigator
-            .clipboard
-            .writeText(
-                code
-            );
-
-
-        alert(
-            "Tailwind classes copied!"
-        );
-
-    } catch (error) {
-
-        console.error(
-            error
-        );
-
-        alert(
-            "Could not copy."
-        );
-
-    }
-
-}
-
-
-/* =========================================================
-   INITIALIZE
-========================================================= */
-
-update();
+});
 
 </script>
 

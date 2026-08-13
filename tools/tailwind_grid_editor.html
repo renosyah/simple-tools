@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Tailwind Responsive Grid Editor</title>
 <script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;width:100%;height:100%;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:#0b1120;color:#e5e7eb}
@@ -164,534 +165,556 @@ input:disabled{opacity:.45;cursor:not-allowed}
 </head>
 <body>
 
-<div class="toolbar">
-  <button id="btn-sm" style="width:80px" onclick="switchBreakpoint('sm')">SM</button>
-  <button id="btn-md" style="width:80px" onclick="switchBreakpoint('md')">MD</button>
-  <button id="btn-lg" style="width:80px" onclick="switchBreakpoint('lg')">LG</button>
-  <span>Editing: <b id="currentBreakpoint">lg</b></span>
-  <span class="toolbar-spacer"></span>
-  <button style="min-width:140px;height:40px" onclick="addBlock()">＋ Add Block</button>
-  <button style="min-width:120px;height:40px" onclick="copyCode()">Copy Code</button>
-  <button style="min-width:80px;height:40px" onclick="resetAll()">Reset</button>
-</div>
-
-<div class="editor">
-  <div class="canvas-wrapper">
-    <div id="canvas" class="canvas"></div>
-    <div class="hint">
-      Drag a block to move it. Drag the yellow corner to resize it.
-      The X button deletes the logical block from <b>SM + MD + LG</b>.
-      Parent grid settings are independent for each breakpoint.
-    </div>
+<div id="app">
+  <div class="toolbar">
+    <button
+      v-for="bp in BREAKPOINTS"
+      :key="'btn-'+bp"
+      :class="{ active: currentBreakpoint === bp }"
+      style="width:80px"
+      @click="switchBreakpoint(bp)"
+    >{{ bp.toUpperCase() }}</button>
+    <span>Editing: <b>{{ currentBreakpoint }}</b></span>
+    <span class="toolbar-spacer"></span>
+    <button style="min-width:140px;height:40px" @click="addBlock">＋ Add Block</button>
+    <button style="min-width:120px;height:40px" @click="copyCode">Copy Code</button>
+    <button style="min-width:80px;height:40px" @click="resetAll">Reset</button>
   </div>
 
-  <aside class="sidebar">
-    <div class="section">
-      <h3>Parent Grid</h3>
-      <div class="bp-grid">
-        <div class="bp-card" id="card-sm">
-          <div class="bp-head"><strong>SM</strong><button class="toggle" onclick="toggleBreakpoint('sm')">Enabled</button></div>
-          <div class="field"><label>Columns</label><input style="width:80px;margin-left:40px" type="number" min="1" max="12" value="12" data-bp="sm" data-key="cols" oninput="changeGridSetting(this)"></div>
-          <div class="field"><label>Rows</label><input style="width:80px;margin-left:40px" type="number" min="1" max="12" value="12" data-bp="sm" data-key="rows" oninput="changeGridSetting(this)"></div>
+  <div class="editor">
+    <div class="canvas-wrapper">
+      <div
+        ref="canvas"
+        class="canvas"
+        :style="canvasStyle"
+      >
+        <div v-if="!currentGrid.enabled" class="empty">
+          This breakpoint is disabled.<br>Enable it from Parent Grid.
         </div>
-        <div class="bp-card" id="card-md">
-          <div class="bp-head"><strong>MD</strong><button class="toggle" onclick="toggleBreakpoint('md')">Enabled</button></div>
-          <div class="field"><label>Columns</label><input style="width:80px;margin-left:40px" type="number" min="1" max="12" value="12" data-bp="md" data-key="cols" oninput="changeGridSetting(this)"></div>
-          <div class="field"><label>Rows</label><input style="width:80px;margin-left:40px" type="number" min="1" max="12" value="12" data-bp="md" data-key="rows" oninput="changeGridSetting(this)"></div>
+        <div
+          v-else-if="!currentLayout.length"
+          class="empty"
+          style="grid-column:1/-1;grid-row:1/-1"
+        >
+          Empty grid<br>Click <b>＋ Add Block</b> to begin.
         </div>
-        <div class="bp-card" id="card-lg">
-          <div class="bp-head"><strong>LG</strong><button class="toggle" onclick="toggleBreakpoint('lg')">Enabled</button></div>
-          <div class="field"><label>Columns</label><input style="width:80px;margin-left:40px" type="number" min="1" max="12" value="12" data-bp="lg" data-key="cols" oninput="changeGridSetting(this)"></div>
-          <div class="field"><label>Rows</label><input style="width:80px;margin-left:40px" type="number" min="1" max="12" value="12" data-bp="lg" data-key="rows" oninput="changeGridSetting(this)"></div>
+        <template v-else>
+          <div
+            v-for="block in currentLayout"
+            :key="block.id"
+            :class="['block', { selected: block.id === selectedId }]"
+            :style="blockStyle(block)"
+            @mousedown="onBlockMouseDown($event, block)"
+          >
+            <div class="block-content">
+              <div class="block-name">{{ block.name }}</div>
+              <div class="block-class">{{ getTailwindClass(block) }}</div>
+            </div>
+            <button
+              class="delete-handle"
+              title="Delete block"
+              @mousedown.stop
+              @click.stop="deleteBlock(block.id)"
+            >×</button>
+            <div
+              class="resize-handle"
+              @mousedown.stop="onResizeMouseDown($event, block)"
+            ></div>
+          </div>
+        </template>
+      </div>
+      <div class="hint">
+        Drag a block to move it. Drag the yellow corner to resize it.
+        The X button deletes the logical block from <b>SM + MD + LG</b>.
+        Parent grid settings are independent for each breakpoint.
+      </div>
+    </div>
+
+    <aside class="sidebar">
+      <div class="section">
+        <h3>Parent Grid</h3>
+        <div class="bp-grid">
+          <div
+            v-for="bp in BREAKPOINTS"
+            :key="'card-'+bp"
+            :class="['bp-card', { disabled: !grid[bp].enabled }]"
+          >
+            <div class="bp-head">
+              <strong>{{ bp.toUpperCase() }}</strong>
+              <button class="toggle" @click="toggleBreakpoint(bp)">
+                {{ grid[bp].enabled ? 'Enabled' : 'Disabled' }}
+              </button>
+            </div>
+            <div class="field">
+              <label>Columns</label>
+              <input
+                style="width:80px;margin-left:40px"
+                type="number"
+                min="1"
+                max="12"
+                :value="grid[bp].cols"
+                :disabled="!grid[bp].enabled"
+                @input="changeGridSetting(bp, 'cols', $event.target.value)"
+              >
+            </div>
+            <div class="field">
+              <label>Rows</label>
+              <input
+                style="width:80px;margin-left:40px"
+                type="number"
+                min="1"
+                max="12"
+                :value="grid[bp].rows"
+                :disabled="!grid[bp].enabled"
+                @input="changeGridSetting(bp, 'rows', $event.target.value)"
+              >
+            </div>
+          </div>
+        </div>
+        <div class="status" id="gridStatus">{{ gridStatusText }}</div>
+      </div>
+
+      <div class="section">
+        <h3>Selected Block</h3>
+        <div id="selectedInfo">
+          <span v-if="selectedId === null" class="status">Nothing selected</span>
+          <template v-else-if="selectedBlock && logicalBlock">
+            <div class="field">
+              <label>Name</label>
+              <input
+                type="text"
+                :value="logicalBlock.name"
+                @change="renameFromInput(selectedId, $event.target.value)"
+              >
+            </div>
+            <div class="field">
+              <label>Column start</label>
+              <input
+                type="number"
+                min="1"
+                :max="currentGrid.cols"
+                :value="selectedBlock.colStart"
+                @change="editGeometry('colStart', $event.target.value)"
+              >
+            </div>
+            <div class="field">
+              <label>Column span</label>
+              <input
+                type="number"
+                min="1"
+                :max="currentGrid.cols"
+                :value="selectedBlock.colSpan"
+                @change="editGeometry('colSpan', $event.target.value)"
+              >
+            </div>
+            <div class="field">
+              <label>Row start</label>
+              <input
+                type="number"
+                min="1"
+                :max="currentGrid.rows"
+                :value="selectedBlock.rowStart"
+                @change="editGeometry('rowStart', $event.target.value)"
+              >
+            </div>
+            <div class="field">
+              <label>Row span</label>
+              <input
+                type="number"
+                min="1"
+                :max="currentGrid.rows"
+                :value="selectedBlock.rowSpan"
+                @change="editGeometry('rowSpan', $event.target.value)"
+              >
+            </div>
+            <button class="danger" @click="deleteBlock(selectedId)">Delete Block</button>
+          </template>
         </div>
       </div>
-      <div class="status" id="gridStatus"></div>
-    </div>
 
-    <div class="section">
-      <h3>Selected Block</h3>
-      <div id="selectedInfo">Nothing selected</div>
-    </div>
+      <div class="section">
+        <h3>Generated Tailwind</h3>
+        <div id="generatedCode" class="code">{{ generatedCodeText }}</div>
+      </div>
 
-    <div class="section">
-      <h3>Generated Tailwind</h3>
-      <div id="generatedCode" class="code"></div>
-    </div>
-
-    <div>
-      <h3>Blocks</h3>
-      <div id="blockList" class="block-list"></div>
-    </div>
-  </aside>
+      <div>
+        <h3>Blocks</h3>
+        <div class="block-list">
+          <div v-if="!blockIds.length" class="status">No blocks yet.</div>
+          <div
+            v-for="id in blockIds"
+            v-else
+            :key="id"
+            :class="['block-item', { selected: id === selectedId }]"
+            @click="onBlockItemClick($event, id)"
+          >
+            <span class="block-item-name">{{ getLogicalBlock(id).name }}</span>
+            <span class="block-item-id">#{{ id }}</span>
+            <button
+              class="block-item-x"
+              title="Delete block"
+              @click.stop="deleteBlock(id)"
+            >×</button>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
 </div>
 
 <script>
-const BREAKPOINTS=["sm","md","lg"];
-const PREFIX={sm:"sm:",md:"md:",lg:"lg:"};
-
-let currentBreakpoint="lg";
-let selectedId=null;
-let nextId=1;
-
-const grid={
-  sm:{enabled:true,cols:12,rows:12},
-  md:{enabled:true,cols:12,rows:12},
-  lg:{enabled:true,cols:12,rows:12}
-};
-
-const layouts={sm:[],md:[],lg:[]};
-
-function getLayout(bp=currentBreakpoint){return layouts[bp]}
-
-function cloneBlock(block){
-  return {
-    id:block.id,name:block.name,
-    colStart:block.colStart,colSpan:block.colSpan,
-    rowStart:block.rowStart,rowSpan:block.rowSpan
-  };
-}
-
-function getBlock(id,bp=currentBreakpoint){
-  return layouts[bp].find(b=>b.id===id);
-}
-
-function getLogicalBlock(id){
-  return layouts.lg.find(b=>b.id===id) ||
-         layouts.md.find(b=>b.id===id) ||
-         layouts.sm.find(b=>b.id===id);
-}
-
-function escapeHtml(value){
-  return String(value??"").replace(/[&<>"']/g,c=>({
-    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
-  }[c]));
-}
-
-function clamp(v,min,max){return Math.max(min,Math.min(max,v))}
-
-function toggleBreakpoint(bp){
-  grid[bp].enabled=!grid[bp].enabled;
-  updateGridControls();
-  render();
-}
-
-function changeGridSetting(input){
-  const bp=input.dataset.bp;
-  const key=input.dataset.key;
-  let value=parseInt(input.value,10);
-  if(!Number.isFinite(value)) value=1;
-  grid[bp][key]=clamp(value,1,12);
-  input.value=grid[bp][key];
-  normalizeLayout(bp);
-  render();
-}
-
-function normalizeLayout(bp){
-  const g=grid[bp];
-  layouts[bp].forEach(b=>{
-    b.colSpan=clamp(b.colSpan,1,g.cols);
-    b.rowSpan=clamp(b.rowSpan,1,g.rows);
-    b.colStart=clamp(b.colStart,1,Math.max(1,g.cols-b.colSpan+1));
-    b.rowStart=clamp(b.rowStart,1,Math.max(1,g.rows-b.rowSpan+1));
-  });
-}
-
-function addBlock(){
-  const name=prompt("Block name:");
-  if(name===null)return;
-  const clean=name.trim();
-  if(!clean){alert("Please enter a block name.");return}
-
-  const id=nextId++;
-  const positions={};
-
-  for(const bp of BREAKPOINTS){
-    const pos=findEmptyPosition(bp,Math.min(2,grid[bp].cols),Math.min(2,grid[bp].rows));
-    if(!pos){
-      alert(`Cannot add "${clean}". No free space in ${bp.toUpperCase()} grid.`);
-      return;
+new Vue({
+  el: '#app',
+  data() {
+    return {
+      BREAKPOINTS: ['sm', 'md', 'lg'],
+      PREFIX: { sm: 'sm:', md: 'md:', lg: 'lg:' },
+      currentBreakpoint: 'lg',
+      selectedId: null,
+      nextId: 1,
+      grid: {
+        sm: { enabled: true, cols: 12, rows: 12 },
+        md: { enabled: true, cols: 12, rows: 12 },
+        lg: { enabled: true, cols: 12, rows: 12 }
+      },
+      layouts: { sm: [], md: [], lg: [] }
+    };
+  },
+  watch: {
+    selectedBlock(val) {
+      if (this.selectedId !== null && !val) {
+        this.selectedId = null;
+      }
     }
-    positions[bp]=pos;
-  }
-
-  for(const bp of BREAKPOINTS){
-    const g=grid[bp];
-    const colSpan=Math.min(2,g.cols);
-    const rowSpan=Math.min(2,g.rows);
-    layouts[bp].push({
-      id,name:clean,
-      colStart:positions[bp].col,colSpan,
-      rowStart:positions[bp].row,rowSpan
-    });
-  }
-
-  selectedId=id;
-  render();
-}
-
-function deleteBlock(id){
-  if(!confirm("Delete this block from SM, MD and LG?"))return;
-  for(const bp of BREAKPOINTS){
-    const i=layouts[bp].findIndex(b=>b.id===id);
-    if(i>=0)layouts[bp].splice(i,1);
-  }
-  if(selectedId===id)selectedId=null;
-  render();
-}
-
-function renameBlock(id){
-  const block=getLogicalBlock(id);
-  if(!block)return;
-  const name=prompt("New block name:",block.name);
-  if(name===null)return;
-  const clean=name.trim();
-  if(!clean)return;
-  for(const bp of BREAKPOINTS){
-    const b=getBlock(id,bp);
-    if(b)b.name=clean;
-  }
-  render();
-}
-
-function findEmptyPosition(bp,colSpan,rowSpan){
-  const g=grid[bp];
-  const layout=layouts[bp];
-  if(colSpan>g.cols||rowSpan>g.rows)return null;
-
-  for(let row=1;row<=g.rows-rowSpan+1;row++){
-    for(let col=1;col<=g.cols-colSpan+1;col++){
-      if(!isOccupied(col,row,colSpan,rowSpan,null,bp))return {col,row};
+  },
+  computed: {
+    currentGrid() {
+      return this.grid[this.currentBreakpoint];
+    },
+    currentLayout() {
+      return this.layouts[this.currentBreakpoint];
+    },
+    selectedBlock() {
+      if (this.selectedId === null) return null;
+      return this.getBlock(this.selectedId);
+    },
+    logicalBlock() {
+      if (this.selectedId === null) return null;
+      return this.getLogicalBlock(this.selectedId);
+    },
+    gridStatusText() {
+      const g = this.currentGrid;
+      return `${this.currentBreakpoint.toUpperCase()}: ${g.enabled ? `${g.cols} columns × ${g.rows} rows` : 'disabled'}`;
+    },
+    generatedCodeText() {
+      if (this.selectedId === null) {
+        return this.parentGridCode() || '(all breakpoints disabled)';
+      }
+      return this.generatedForBlock(this.selectedId);
+    },
+    blockIds() {
+      return [...new Set(this.BREAKPOINTS.flatMap(bp => this.layouts[bp].map(b => b.id)))];
+    },
+    canvasStyle() {
+      const g = this.currentGrid;
+      if (!g.enabled) {
+        return { display: 'block' };
+      }
+      return {
+        display: 'grid',
+        gridTemplateColumns: `repeat(${g.cols}, 1fr)`,
+        gridTemplateRows: `repeat(${g.rows}, 58px)`,
+        minHeight: `${g.rows * 58 + 4}px`,
+        backgroundSize: `calc(100% / ${g.cols}) 58px`
+      };
     }
-  }
-  return null;
-}
-
-function isOccupied(col,row,colSpan,rowSpan,ignoreId=null,bp=currentBreakpoint){
-  const right=col+colSpan-1,bottom=row+rowSpan-1;
-  return layouts[bp].some(b=>{
-    if(b.id===ignoreId)return false;
-    const bRight=b.colStart+b.colSpan-1;
-    const bBottom=b.rowStart+b.rowSpan-1;
-    return col<=bRight && right>=b.colStart &&
-           row<=bBottom && bottom>=b.rowStart;
-  });
-}
-
-function switchBreakpoint(bp){
-  currentBreakpoint=bp;
-  document.getElementById("currentBreakpoint").textContent=bp;
-  document.querySelectorAll(".toolbar button[id^='btn-']").forEach(b=>b.classList.remove("active"));
-  document.getElementById("btn-"+bp).classList.add("active");
-  if(selectedId!==null && !getBlock(selectedId,bp)){
-    selectedId=layouts[bp][0]?.id??null;
-  }
-  render();
-}
-
-function render(){
-  updateGridControls();
-
-  const canvas=document.getElementById("canvas");
-  const g=grid[currentBreakpoint];
-  const layout=layouts[currentBreakpoint];
-
-  if(!g.enabled){
-    canvas.innerHTML='<div class="empty">This breakpoint is disabled.<br>Enable it from Parent Grid.</div>';
-    canvas.style.display="block";
-    updateSidebar();
-    return;
-  }
-
-  canvas.style.display="grid";
-  canvas.innerHTML="";
-  canvas.style.gridTemplateColumns=`repeat(${g.cols},1fr)`;
-  canvas.style.gridTemplateRows=`repeat(${g.rows},58px)`;
-  canvas.style.minHeight=`${g.rows*58+4}px`;
-  canvas.style.backgroundSize=`calc(100% / ${g.cols}) 58px`;
-
-  if(!layout.length){
-    canvas.innerHTML='<div class="empty" style="grid-column:1/-1;grid-row:1/-1">Empty grid<br>Click <b>＋ Add Block</b> to begin.</div>';
-    updateSidebar();
-    return;
-  }
-
-  layout.forEach(block=>{
-    const el=document.createElement("div");
-    el.className="block"+(block.id===selectedId?" selected":"");
-    el.style.gridColumn=`${block.colStart} / span ${block.colSpan}`;
-    el.style.gridRow=`${block.rowStart} / span ${block.rowSpan}`;
-
-    el.innerHTML=`
-      <div class="block-content">
-        <div class="block-name">${escapeHtml(block.name)}</div>
-        <div class="block-class">${escapeHtml(getTailwindClass(block))}</div>
-      </div>
-      <button class="delete-handle" title="Delete block">×</button>
-      <div class="resize-handle"></div>
-    `;
-
-    el.addEventListener("mousedown",e=>{
-      if(e.target.closest(".delete-handle")||e.target.closest(".resize-handle"))return;
-      selectBlock(block.id);
-      startDrag(e,block);
-    });
-
-    el.querySelector(".delete-handle").addEventListener("mousedown",e=>e.stopPropagation());
-    el.querySelector(".delete-handle").addEventListener("click",e=>{
-      e.stopPropagation();
-      deleteBlock(block.id);
-    });
-
-    el.querySelector(".resize-handle").addEventListener("mousedown",e=>{
-      e.stopPropagation();
-      selectBlock(block.id);
-      startResize(e,block);
-    });
-
-    canvas.appendChild(el);
-  });
-
-  updateSidebar();
-}
-
-function selectBlock(id){
-  selectedId=id;
-  render();
-}
-
-function startDrag(e,block){
-  e.preventDefault();
-
-  const rect=document.getElementById("canvas").getBoundingClientRect();
-  const g=grid[currentBreakpoint];
-  const cellW=(rect.width-4-(g.cols-1)*4)/g.cols;
-  const cellH=58;
-  const startX=e.clientX,startY=e.clientY;
-  const originalCol=block.colStart,originalRow=block.rowStart;
-
-  function move(ev){
-    const dx=Math.round((ev.clientX-startX)/(cellW+4));
-    const dy=Math.round((ev.clientY-startY)/(cellH+4));
-    const newCol=clamp(originalCol+dx,1,g.cols-block.colSpan+1);
-    const newRow=clamp(originalRow+dy,1,g.rows-block.rowSpan+1);
-
-    if(!isOccupied(newCol,newRow,block.colSpan,block.rowSpan,block.id)){
-      block.colStart=newCol;
-      block.rowStart=newRow;
-      render();
-    }
-  }
-
-  function stop(){
-    document.removeEventListener("mousemove",move);
-    document.removeEventListener("mouseup",stop);
-  }
-  document.addEventListener("mousemove",move);
-  document.addEventListener("mouseup",stop);
-}
-
-function startResize(e,block){
-  e.preventDefault();
-
-  const rect=document.getElementById("canvas").getBoundingClientRect();
-  const g=grid[currentBreakpoint];
-  const cellW=(rect.width-4-(g.cols-1)*4)/g.cols;
-  const cellH=58;
-  const startX=e.clientX,startY=e.clientY;
-  const originalW=block.colSpan,originalH=block.rowSpan;
-
-  function move(ev){
-    const dw=Math.round((ev.clientX-startX)/(cellW+4));
-    const dh=Math.round((ev.clientY-startY)/(cellH+4));
-
-    const newW=clamp(originalW+dw,1,g.cols-block.colStart+1);
-    const newH=clamp(originalH+dh,1,g.rows-block.rowStart+1);
-
-    if(!isOccupied(block.colStart,block.rowStart,newW,newH,block.id)){
-      block.colSpan=newW;
-      block.rowSpan=newH;
-      render();
-    }
-  }
-
-  function stop(){
-    document.removeEventListener("mousemove",move);
-    document.removeEventListener("mouseup",stop);
-  }
-  document.addEventListener("mousemove",move);
-  document.addEventListener("mouseup",stop);
-}
-
-function getTailwindClass(block){
-  const g=grid[currentBreakpoint];
-  const col=`col-span-${block.colSpan}`;
-  const row=`row-span-${block.rowSpan}`;
-  return `${col} ${row}`;
-}
-
-function generatedForBlock(id){
-  const parts=[];
-  for(const bp of BREAKPOINTS){
-    const b=getBlock(id,bp);
-    if(!b||!grid[bp].enabled)continue;
-
-    parts.push(
-      bp==="sm" ? `${PREFIX.sm}col-span-${b.colSpan} ${PREFIX.sm}row-span-${b.rowSpan}` :
-      bp==="md" ? `${PREFIX.md}col-span-${b.colSpan} ${PREFIX.md}row-span-${b.rowSpan}` :
-      `${PREFIX.lg}col-span-${b.colSpan} ${PREFIX.lg}row-span-${b.rowSpan}`
-    );
-  }
-  return parts.join(" ");
-}
-
-function parentGridCode(){
-  const parts=[];
-  for(const bp of BREAKPOINTS){
-    if(!grid[bp].enabled)continue;
-    const prefix=bp==="sm"?PREFIX.sm:bp==="md"?PREFIX.md:PREFIX.lg;
-    parts.push(`${prefix}grid-cols-${grid[bp].cols}`);
-    parts.push(`${prefix}grid-rows-${grid[bp].rows}`);
-  }
-  return parts.join(" ");
-}
-
-function updateSidebar(){
-  const info=document.getElementById("selectedInfo");
-  const code=document.getElementById("generatedCode");
-  const list=document.getElementById("blockList");
-
-  if(selectedId===null){
-    info.innerHTML="<span class='status'>Nothing selected</span>";
-    code.textContent=parentGridCode()||"(all breakpoints disabled)";
-  }else{
-    const b=getBlock(selectedId);
-    const logical=getLogicalBlock(selectedId);
-    if(!b||!logical){
-      selectedId=null;
-      return updateSidebar();
-    }
-
-    info.innerHTML=`
-      <div class="field"><label>Name</label>
-        <input type="text" value="${escapeHtml(logical.name)}" onchange="renameFromInput(${selectedId},this.value)">
-      </div>
-      <div class="field"><label>Column start</label><input type="number" min="1" max="${grid[currentBreakpoint].cols}" value="${b.colStart}" onchange="editGeometry('colStart',this.value)"></div>
-      <div class="field"><label>Column span</label><input type="number" min="1" max="${grid[currentBreakpoint].cols}" value="${b.colSpan}" onchange="editGeometry('colSpan',this.value)"></div>
-      <div class="field"><label>Row start</label><input type="number" min="1" max="${grid[currentBreakpoint].rows}" value="${b.rowStart}" onchange="editGeometry('rowStart',this.value)"></div>
-      <div class="field"><label>Row span</label><input type="number" min="1" max="${grid[currentBreakpoint].rows}" value="${b.rowSpan}" onchange="editGeometry('rowSpan',this.value)"></div>
-      <button class="danger" onclick="deleteBlock(${selectedId})">Delete Block</button>
-    `;
-
-    code.textContent=generatedForBlock(selectedId);
-  }
-
-  list.innerHTML="";
-  const ids=[...new Set(BREAKPOINTS.flatMap(bp=>layouts[bp].map(b=>b.id)))];
-
-  if(!ids.length){
-    list.innerHTML='<div class="status">No blocks yet.</div>';
-  }else{
-    ids.forEach(id=>{
-      const b=getLogicalBlock(id);
-      const item=document.createElement("div");
-      item.className="block-item"+(id===selectedId?" selected":"");
-      item.innerHTML=`
-        <span class="block-item-name">${escapeHtml(b.name)}</span>
-        <span class="block-item-id">#${id}</span>
-        <button class="block-item-x" title="Delete block">×</button>
-      `;
-      item.addEventListener("click",e=>{
-        if(e.target.closest(".block-item-x"))return;
-        selectedId=id;
-        render();
+  },
+  methods: {
+    getLayout(bp) {
+      return this.layouts[bp ?? this.currentBreakpoint];
+    },
+    getBlock(id, bp) {
+      return this.layouts[bp ?? this.currentBreakpoint].find(b => b.id === id);
+    },
+    getLogicalBlock(id) {
+      return this.layouts.lg.find(b => b.id === id) ||
+             this.layouts.md.find(b => b.id === id) ||
+             this.layouts.sm.find(b => b.id === id);
+    },
+    escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
+      }[c]));
+    },
+    clamp(v, min, max) {
+      return Math.max(min, Math.min(max, v));
+    },
+    blockStyle(block) {
+      return {
+        gridColumn: `${block.colStart} / span ${block.colSpan}`,
+        gridRow: `${block.rowStart} / span ${block.rowSpan}`
+      };
+    },
+    toggleBreakpoint(bp) {
+      this.grid[bp].enabled = !this.grid[bp].enabled;
+    },
+    changeGridSetting(bp, key, value) {
+      let v = parseInt(value, 10);
+      if (!Number.isFinite(v)) v = 1;
+      this.grid[bp][key] = this.clamp(v, 1, 12);
+      this.normalizeLayout(bp);
+    },
+    normalizeLayout(bp) {
+      const g = this.grid[bp];
+      this.layouts[bp].forEach(b => {
+        b.colSpan = this.clamp(b.colSpan, 1, g.cols);
+        b.rowSpan = this.clamp(b.rowSpan, 1, g.rows);
+        b.colStart = this.clamp(b.colStart, 1, Math.max(1, g.cols - b.colSpan + 1));
+        b.rowStart = this.clamp(b.rowStart, 1, Math.max(1, g.rows - b.rowSpan + 1));
       });
-      item.querySelector(".block-item-x").addEventListener("click",e=>{
-        e.stopPropagation();
-        deleteBlock(id);
+    },
+    addBlock() {
+      const name = prompt('Block name:');
+      if (name === null) return;
+      const clean = name.trim();
+      if (!clean) { alert('Please enter a block name.'); return; }
+
+      const id = this.nextId++;
+      const positions = {};
+
+      for (const bp of this.BREAKPOINTS) {
+        const pos = this.findEmptyPosition(bp, Math.min(2, this.grid[bp].cols), Math.min(2, this.grid[bp].rows));
+        if (!pos) {
+          alert(`Cannot add "${clean}". No free space in ${bp.toUpperCase()} grid.`);
+          return;
+        }
+        positions[bp] = pos;
+      }
+
+      for (const bp of this.BREAKPOINTS) {
+        const g = this.grid[bp];
+        const colSpan = Math.min(2, g.cols);
+        const rowSpan = Math.min(2, g.rows);
+        this.layouts[bp].push({
+          id, name: clean,
+          colStart: positions[bp].col, colSpan,
+          rowStart: positions[bp].row, rowSpan
+        });
+      }
+
+      this.selectedId = id;
+    },
+    deleteBlock(id) {
+      if (!confirm('Delete this block from SM, MD and LG?')) return;
+      for (const bp of this.BREAKPOINTS) {
+        const i = this.layouts[bp].findIndex(b => b.id === id);
+        if (i >= 0) this.layouts[bp].splice(i, 1);
+      }
+      if (this.selectedId === id) this.selectedId = null;
+    },
+    renameBlock(id) {
+      const block = this.getLogicalBlock(id);
+      if (!block) return;
+      const name = prompt('New block name:', block.name);
+      if (name === null) return;
+      const clean = name.trim();
+      if (!clean) return;
+      for (const bp of this.BREAKPOINTS) {
+        const b = this.getBlock(id, bp);
+        if (b) b.name = clean;
+      }
+    },
+    renameFromInput(id, value) {
+      const clean = value.trim();
+      if (!clean) return;
+      for (const bp of this.BREAKPOINTS) {
+        const b = this.getBlock(id, bp);
+        if (b) b.name = clean;
+      }
+    },
+    findEmptyPosition(bp, colSpan, rowSpan) {
+      const g = this.grid[bp];
+      if (colSpan > g.cols || rowSpan > g.rows) return null;
+
+      for (let row = 1; row <= g.rows - rowSpan + 1; row++) {
+        for (let col = 1; col <= g.cols - colSpan + 1; col++) {
+          if (!this.isOccupied(col, row, colSpan, rowSpan, null, bp)) return { col, row };
+        }
+      }
+      return null;
+    },
+    isOccupied(col, row, colSpan, rowSpan, ignoreId, bp) {
+      bp = bp ?? this.currentBreakpoint;
+      const right = col + colSpan - 1;
+      const bottom = row + rowSpan - 1;
+      return this.layouts[bp].some(b => {
+        if (b.id === ignoreId) return false;
+        const bRight = b.colStart + b.colSpan - 1;
+        const bBottom = b.rowStart + b.rowSpan - 1;
+        return col <= bRight && right >= b.colStart &&
+               row <= bBottom && bottom >= b.rowStart;
       });
-      list.appendChild(item);
-    });
+    },
+    switchBreakpoint(bp) {
+      this.currentBreakpoint = bp;
+      if (this.selectedId !== null && !this.getBlock(this.selectedId, bp)) {
+        this.selectedId = this.layouts[bp][0]?.id ?? null;
+      }
+    },
+    selectBlock(id) {
+      this.selectedId = id;
+    },
+    onBlockItemClick(e, id) {
+      if (e.target.closest('.block-item-x')) return;
+      this.selectedId = id;
+    },
+    onBlockMouseDown(e, block) {
+      if (e.target.closest('.delete-handle') || e.target.closest('.resize-handle')) return;
+      this.selectBlock(block.id);
+      this.startDrag(e, block);
+    },
+    onResizeMouseDown(e, block) {
+      this.selectBlock(block.id);
+      this.startResize(e, block);
+    },
+    startDrag(e, block) {
+      e.preventDefault();
+
+      const rect = this.$refs.canvas.getBoundingClientRect();
+      const g = this.currentGrid;
+      const cellW = (rect.width - 4 - (g.cols - 1) * 4) / g.cols;
+      const cellH = 58;
+      const startX = e.clientX;
+      const startY = e.clientY;
+      const originalCol = block.colStart;
+      const originalRow = block.rowStart;
+
+      const move = (ev) => {
+        const dx = Math.round((ev.clientX - startX) / (cellW + 4));
+        const dy = Math.round((ev.clientY - startY) / (cellH + 4));
+        const newCol = this.clamp(originalCol + dx, 1, g.cols - block.colSpan + 1);
+        const newRow = this.clamp(originalRow + dy, 1, g.rows - block.rowSpan + 1);
+
+        if (!this.isOccupied(newCol, newRow, block.colSpan, block.rowSpan, block.id)) {
+          block.colStart = newCol;
+          block.rowStart = newRow;
+        }
+      };
+
+      const stop = () => {
+        document.removeEventListener('mousemove', move);
+        document.removeEventListener('mouseup', stop);
+      };
+      document.addEventListener('mousemove', move);
+      document.addEventListener('mouseup', stop);
+    },
+    startResize(e, block) {
+      e.preventDefault();
+
+      const rect = this.$refs.canvas.getBoundingClientRect();
+      const g = this.currentGrid;
+      const cellW = (rect.width - 4 - (g.cols - 1) * 4) / g.cols;
+      const cellH = 58;
+      const startX = e.clientX;
+      const startY = e.clientY;
+      const originalW = block.colSpan;
+      const originalH = block.rowSpan;
+
+      const move = (ev) => {
+        const dw = Math.round((ev.clientX - startX) / (cellW + 4));
+        const dh = Math.round((ev.clientY - startY) / (cellH + 4));
+
+        const newW = this.clamp(originalW + dw, 1, g.cols - block.colStart + 1);
+        const newH = this.clamp(originalH + dh, 1, g.rows - block.rowStart + 1);
+
+        if (!this.isOccupied(block.colStart, block.rowStart, newW, newH, block.id)) {
+          block.colSpan = newW;
+          block.rowSpan = newH;
+        }
+      };
+
+      const stop = () => {
+        document.removeEventListener('mousemove', move);
+        document.removeEventListener('mouseup', stop);
+      };
+      document.addEventListener('mousemove', move);
+      document.addEventListener('mouseup', stop);
+    },
+    getTailwindClass(block) {
+      const col = `col-span-${block.colSpan}`;
+      const row = `row-span-${block.rowSpan}`;
+      return `${col} ${row}`;
+    },
+    generatedForBlock(id) {
+      const parts = [];
+      for (const bp of this.BREAKPOINTS) {
+        const b = this.getBlock(id, bp);
+        if (!b || !this.grid[bp].enabled) continue;
+
+        parts.push(
+          bp === 'sm' ? `${this.PREFIX.sm}col-span-${b.colSpan} ${this.PREFIX.sm}row-span-${b.rowSpan}` :
+          bp === 'md' ? `${this.PREFIX.md}col-span-${b.colSpan} ${this.PREFIX.md}row-span-${b.rowSpan}` :
+          `${this.PREFIX.lg}col-span-${b.colSpan} ${this.PREFIX.lg}row-span-${b.rowSpan}`
+        );
+      }
+      return parts.join(' ');
+    },
+    parentGridCode() {
+      const parts = [];
+      for (const bp of this.BREAKPOINTS) {
+        if (!this.grid[bp].enabled) continue;
+        const prefix = bp === 'sm' ? this.PREFIX.sm : bp === 'md' ? this.PREFIX.md : this.PREFIX.lg;
+        parts.push(`${prefix}grid-cols-${this.grid[bp].cols}`);
+        parts.push(`${prefix}grid-rows-${this.grid[bp].rows}`);
+      }
+      return parts.join(' ');
+    },
+    editGeometry(key, value) {
+      const b = this.getBlock(this.selectedId);
+      if (!b) return;
+      const g = this.currentGrid;
+      let v = parseInt(value, 10);
+      if (!Number.isFinite(v)) return;
+
+      if (key === 'colStart') v = this.clamp(v, 1, g.cols - b.colSpan + 1);
+      if (key === 'colSpan') v = this.clamp(v, 1, g.cols - b.colStart + 1);
+      if (key === 'rowStart') v = this.clamp(v, 1, g.rows - b.rowSpan + 1);
+      if (key === 'rowSpan') v = this.clamp(v, 1, g.rows - b.rowStart + 1);
+
+      const candidate = { ...b, [key]: v };
+      if (this.isOccupied(candidate.colStart, candidate.rowStart, candidate.colSpan, candidate.rowSpan, b.id)) {
+        alert('That size/position overlaps another block.');
+        return;
+      }
+      Object.assign(b, candidate);
+    },
+    async copyCode() {
+      let out = `<div class="grid ${this.parentGridCode()}">\n`;
+
+      this.blockIds.forEach(id => {
+        const b = this.getLogicalBlock(id);
+        out += `  <div class="${this.generatedForBlock(id)}">${this.escapeHtml(b.name)}</div>\n`;
+      });
+      out += '</div>';
+
+      try {
+        await navigator.clipboard.writeText(out);
+        alert('Tailwind code copied.');
+      } catch {
+        prompt('Copy this code:', out);
+      }
+    },
+    resetAll() {
+      if (!confirm('Reset the editor? This removes all blocks and restores 12×12 grids.')) return;
+      for (const bp of this.BREAKPOINTS) {
+        this.grid[bp] = { enabled: true, cols: 12, rows: 12 };
+        this.layouts[bp] = [];
+      }
+      this.selectedId = null;
+      this.nextId = 1;
+    }
   }
-}
-
-function renameFromInput(id,value){
-  const clean=value.trim();
-  if(!clean)return;
-  for(const bp of BREAKPOINTS){
-    const b=getBlock(id,bp);
-    if(b)b.name=clean;
-  }
-  render();
-}
-
-function editGeometry(key,value){
-  const b=getBlock(selectedId);
-  if(!b)return;
-  const g=grid[currentBreakpoint];
-  let v=parseInt(value,10);
-  if(!Number.isFinite(v))return;
-
-  if(key==="colStart")v=clamp(v,1,g.cols-b.colSpan+1);
-  if(key==="colSpan")v=clamp(v,1,g.cols-b.colStart+1);
-  if(key==="rowStart")v=clamp(v,1,g.rows-b.rowSpan+1);
-  if(key==="rowSpan")v=clamp(v,1,g.rows-b.rowStart+1);
-
-  const candidate={...b,[key]:v};
-  if(isOccupied(candidate.colStart,candidate.rowStart,candidate.colSpan,candidate.rowSpan,b.id)){
-    alert("That size/position overlaps another block.");
-    return;
-  }
-  Object.assign(b,candidate);
-  render();
-}
-
-function updateGridControls(){
-  for(const bp of BREAKPOINTS){
-    const g=grid[bp];
-    const card=document.getElementById("card-"+bp);
-    card.classList.toggle("disabled",!g.enabled);
-    card.querySelector(".toggle").textContent=g.enabled?"Enabled":"Disabled";
-    card.querySelectorAll("input").forEach(input=>{
-      input.disabled=!g.enabled;
-      input.value=g[input.dataset.key];
-    });
-  }
-
-  const g=grid[currentBreakpoint];
-  document.getElementById("gridStatus").textContent=
-    `${currentBreakpoint.toUpperCase()}: ${g.enabled?`${g.cols} columns × ${g.rows} rows`:"disabled"}`;
-}
-
-async function copyCode(){
-  let out=`<div class="grid ${parentGridCode()}">\n`;
-  const ids=[...new Set(BREAKPOINTS.flatMap(bp=>layouts[bp].map(b=>b.id)))];
-
-  ids.forEach(id=>{
-    const b=getLogicalBlock(id);
-    out+=`  <div class="${generatedForBlock(id)}">${escapeHtml(b.name)}</div>\n`;
-  });
-  out+="</div>";
-
-  try{
-    await navigator.clipboard.writeText(out);
-    alert("Tailwind code copied.");
-  }catch{
-    prompt("Copy this code:",out);
-  }
-}
-
-function resetAll(){
-  if(!confirm("Reset the editor? This removes all blocks and restores 12×12 grids."))return;
-  for(const bp of BREAKPOINTS){
-    grid[bp]={enabled:true,cols:12,rows:12};
-    layouts[bp]=[];
-  }
-  selectedId=null;
-  nextId=1;
-  render();
-}
-
-switchBreakpoint("lg");
+});
 </script>
 </body>
 </html>

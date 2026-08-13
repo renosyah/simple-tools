@@ -588,6 +588,7 @@
 
 <body>
 
+<div id="app">
 
 <!-- =========================================================
      TOOLBAR
@@ -604,7 +605,7 @@
 
 
     <button
-        onclick="loadExample()"
+        @click="loadExample"
     >
         Example
     </button>
@@ -612,14 +613,14 @@
 
     <button
         class="primary"
-        onclick="formatJSON()"
+        @click="formatJSON"
     >
         Format
     </button>
 
 
     <button
-        onclick="copyOutput()"
+        @click="copyOutput"
     >
         Copy
     </button>
@@ -627,7 +628,7 @@
 
     <button
         class="danger"
-        onclick="clearAll()"
+        @click="clearAll"
     >
         Clear
     </button>
@@ -669,7 +670,7 @@
 
 
             <textarea
-                id="jsonInput"
+                v-model="jsonInput"
                 spellcheck="false"
                 placeholder='Paste JSON here...
 
@@ -681,15 +682,14 @@ Example:
         "age": 30
     }
 ]'
-                oninput="validateJSON()"
+                @input="validateJSON"
             ></textarea>
 
 
             <div
-                id="status"
-                class="status empty"
+                :class="statusClass"
             >
-                Waiting for JSON...
+                {{ statusText }}
 
             </div>
 
@@ -708,10 +708,9 @@ Example:
 
 
             <div
-                id="jsonOutput"
                 class="output"
             >
-                Formatted JSON will appear here.
+                {{ jsonOutput }}
 
             </div>
 
@@ -732,18 +731,18 @@ Example:
         <div class="tabs">
 
             <button
-                id="tabTable"
-                class="tab active"
-                onclick="showTab('table')"
+                class="tab"
+                :class="{ active: activeTab === 'table' }"
+                @click="showTab('table')"
             >
                 📋 Table
             </button>
 
 
             <button
-                id="tabChart"
                 class="tab"
-                onclick="showTab('chart')"
+                :class="{ active: activeTab === 'chart' }"
+                @click="showTab('chart')"
             >
                 📊 Visualization
             </button>
@@ -754,19 +753,13 @@ Example:
         <!-- TABLE -->
 
         <div
-            id="tableTab"
+            v-show="activeTab === 'table'"
             class="tab-content"
         >
 
             <div
-                id="tableContainer"
-            >
-
-                <div class="empty-message">
-                    Array/object data will appear here.
-                </div>
-
-            </div>
+                v-html="tableHtml"
+            ></div>
 
         </div>
 
@@ -774,9 +767,8 @@ Example:
         <!-- CHART -->
 
         <div
-            id="chartTab"
+            v-show="activeTab === 'chart'"
             class="tab-content"
-            style="display:none"
         >
 
             <div class="chart-controls">
@@ -787,8 +779,8 @@ Example:
                     Chart:
 
                     <select
-                        id="chartType"
-                        onchange="renderChart()"
+                        v-model="chartType"
+                        @change="renderChart"
                     >
 
                         <option value="auto">
@@ -805,31 +797,49 @@ Example:
 
 
                 <div
-                    id="xControl"
                     class="chart-control"
                 >
 
                     X:
 
                     <select
-                        id="xColumn"
-                        onchange="renderChart()"
-                    ></select>
+                        v-model="xColumn"
+                        @change="renderChart"
+                    >
+
+                        <option
+                            v-for="column in columns"
+                            :key="column"
+                            :value="column"
+                        >
+                            {{ column }}
+                        </option>
+
+                    </select>
 
                 </div>
 
 
                 <div
-                    id="yControl"
                     class="chart-control"
                 >
 
                     Y:
 
                     <select
-                        id="yColumn"
-                        onchange="renderChart()"
-                    ></select>
+                        v-model="yColumn"
+                        @change="renderChart"
+                    >
+
+                        <option
+                            v-for="column in columns"
+                            :key="column"
+                            :value="column"
+                        >
+                            {{ column }}
+                        </option>
+
+                    </select>
 
                 </div>
 
@@ -837,14 +847,8 @@ Example:
 
 
             <div
-                id="chartContainer"
-            >
-
-                <div class="empty-message">
-                    Numeric JSON data will be visualized here.
-                </div>
-
-            </div>
+                v-html="chartHtml"
+            ></div>
 
         </div>
 
@@ -852,338 +856,294 @@ Example:
 
 </main>
 
+</div>
+
+
+<script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
 
 <script>
 
-/* =========================================================
-   STATE
-========================================================= */
+new Vue({
 
-let currentData = null;
+    el: "#app",
 
-let tableData = [];
 
-let columns = [];
+    data: {
 
+        jsonInput: "",
 
-/* =========================================================
-   ELEMENTS
-========================================================= */
+        jsonOutput:
+            "Formatted JSON will appear here.",
 
-const input =
-    document.getElementById(
-        "jsonInput"
-    );
+        statusClass:
+            "status empty",
 
+        statusText:
+            "Waiting for JSON...",
 
-const output =
-    document.getElementById(
-        "jsonOutput"
-    );
+        currentData: null,
 
+        tableData: [],
 
-const status =
-    document.getElementById(
-        "status"
-    );
+        columns: [],
 
+        activeTab: "table",
 
-/* =========================================================
-   VALIDATE
-========================================================= */
+        chartType: "auto",
 
-function validateJSON() {
+        xColumn: "",
 
-    const text =
-        input.value.trim();
+        yColumn: "",
 
-
-    if (!text) {
-
-        status.className =
-            "status empty";
-
-        status.textContent =
-            "Waiting for JSON...";
-
-        currentData = null;
-
-        return;
-
-    }
-
-
-    try {
-
-        currentData =
-            JSON.parse(
-                text
-            );
-
-
-        status.className =
-            "status valid";
-
-        status.textContent =
-            "✓ Valid JSON";
-
-
-    } catch (error) {
-
-        status.className =
-            "status invalid";
-
-        status.textContent =
-            "✕ " +
-            error.message;
-
-        currentData = null;
-
-    }
-
-}
-
-
-/* =========================================================
-   FORMAT
-========================================================= */
-
-function formatJSON() {
-
-    const text =
-        input.value.trim();
-
-
-    if (!text) {
-
-        output.textContent =
-            "Nothing to format.";
-
-        return;
-
-    }
-
-
-    try {
-
-        const data =
-            JSON.parse(
-                text
-            );
-
-
-        currentData =
-            data;
-
-
-        output.textContent =
-            JSON.stringify(
-                data,
-                null,
-                4
-            );
-
-
-        status.className =
-            "status valid";
-
-        status.textContent =
-            "✓ Valid JSON";
-
-
-        generateTable(
-            data
-        );
-
-
-        prepareChart(
-            data
-        );
-
-
-    } catch (error) {
-
-        output.textContent =
-            "Invalid JSON\n\n" +
-            error.message;
-
-
-        status.className =
-            "status invalid";
-
-        status.textContent =
-            "✕ Invalid JSON";
-
-
-        clearResults();
-
-    }
-
-}
-
-
-/* =========================================================
-   GENERATE TABLE
-========================================================= */
-
-function generateTable(data) {
-
-    const container =
-        document.getElementById(
-            "tableContainer"
-        );
-
-
-    let rows = [];
-
-
-    /*
-     * Best case:
-     *
-     * [
-     *   {...},
-     *   {...}
-     * ]
-     */
-
-    if (
-        Array.isArray(data) &&
-        data.length > 0 &&
-        data.every(
-            item =>
-                item !== null &&
-                typeof item === "object" &&
-                !Array.isArray(item)
-        )
-    ) {
-
-        rows =
-            data;
-
-    }
-
-
-    /*
-     * Single object:
-     */
-
-    else if (
-        data !== null &&
-        typeof data === "object" &&
-        !Array.isArray(data)
-    ) {
-
-        rows = [
-            data
-        ];
-
-    }
-
-
-    else {
-
-        container.innerHTML = `
+        tableHtml: `
             <div class="empty-message">
-                Table view requires object or array-of-object data.
+                Array/object data will appear here.
             </div>
-        `;
+        `,
 
-        return;
+        chartHtml: `
+            <div class="empty-message">
+                Numeric JSON data will be visualized here.
+            </div>
+        `
 
-    }
+    },
 
 
-    /*
-     * Flatten columns
-     */
+    mounted() {
 
-    const flattened =
-        rows.map(
-            row =>
-                flattenObject(
-                    row
+        this.validateJSON();
+
+    },
+
+
+    methods: {
+
+        validateJSON() {
+
+            const text =
+                this.jsonInput.trim();
+
+
+            if (!text) {
+
+                this.statusClass =
+                    "status empty";
+
+                this.statusText =
+                    "Waiting for JSON...";
+
+                this.currentData = null;
+
+                return;
+
+            }
+
+
+            try {
+
+                this.currentData =
+                    JSON.parse(
+                        text
+                    );
+
+
+                this.statusClass =
+                    "status valid";
+
+                this.statusText =
+                    "✓ Valid JSON";
+
+
+            } catch (error) {
+
+                this.statusClass =
+                    "status invalid";
+
+                this.statusText =
+                    "✕ " +
+                    error.message;
+
+                this.currentData = null;
+
+            }
+
+        },
+
+
+        formatJSON() {
+
+            const text =
+                this.jsonInput.trim();
+
+
+            if (!text) {
+
+                this.jsonOutput =
+                    "Nothing to format.";
+
+                return;
+
+            }
+
+
+            try {
+
+                const data =
+                    JSON.parse(
+                        text
+                    );
+
+
+                this.currentData =
+                    data;
+
+
+                this.jsonOutput =
+                    JSON.stringify(
+                        data,
+                        null,
+                        4
+                    );
+
+
+                this.statusClass =
+                    "status valid";
+
+                this.statusText =
+                    "✓ Valid JSON";
+
+
+                this.generateTable(
+                    data
+                );
+
+
+                this.prepareChart(
+                    data
+                );
+
+
+            } catch (error) {
+
+                this.jsonOutput =
+                    "Invalid JSON\n\n" +
+                    error.message;
+
+
+                this.statusClass =
+                    "status invalid";
+
+                this.statusText =
+                    "✕ Invalid JSON";
+
+
+                this.clearResults();
+
+            }
+
+        },
+
+
+        generateTable(data) {
+
+            let rows = [];
+
+
+            if (
+                Array.isArray(data) &&
+                data.length > 0 &&
+                data.every(
+                    item =>
+                        item !== null &&
+                        typeof item === "object" &&
+                        !Array.isArray(item)
                 )
-        );
+            ) {
+
+                rows =
+                    data;
+
+            }
 
 
-    columns = [
-        ...new Set(
-            flattened.flatMap(
-                row =>
-                    Object.keys(row)
-            )
-        )
-    ];
+            else if (
+                data !== null &&
+                typeof data === "object" &&
+                !Array.isArray(data)
+            ) {
+
+                rows = [
+                    data
+                ];
+
+            }
 
 
-    tableData =
-        flattened;
+            else {
+
+                this.tableHtml = `
+                    <div class="empty-message">
+                        Table view requires object or array-of-object data.
+                    </div>
+                `;
+
+                return;
+
+            }
 
 
-    if (!columns.length) {
-
-        container.innerHTML = `
-            <div class="empty-message">
-                No columns found.
-            </div>
-        `;
-
-        return;
-
-    }
+            const flattened =
+                rows.map(
+                    row =>
+                        this.flattenObject(
+                            row
+                        )
+                );
 
 
-    let html = `
-        <div class="table-wrapper">
-        <table>
-            <thead>
-                <tr>
-    `;
+            this.columns = [
+                ...new Set(
+                    flattened.flatMap(
+                        row =>
+                            Object.keys(row)
+                    )
+                )
+            ];
 
 
-    columns.forEach(
-        column => {
+            this.tableData =
+                flattened;
 
-            html += `
-                <th>
-                    ${escapeHTML(column)}
-                </th>
+
+            if (!this.columns.length) {
+
+                this.tableHtml = `
+                    <div class="empty-message">
+                        No columns found.
+                    </div>
+                `;
+
+                return;
+
+            }
+
+
+            let html = `
+                <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
             `;
 
-        }
-    );
 
-
-    html += `
-                </tr>
-            </thead>
-            <tbody>
-    `;
-
-
-    flattened.forEach(
-        row => {
-
-            html += `
-                <tr>
-            `;
-
-
-            columns.forEach(
+            this.columns.forEach(
                 column => {
 
-                    const value =
-                        row[column];
-
-
                     html += `
-                        <td>
-                            ${
-                                formatCell(
-                                    value
-                                )
-                            }
-                        </td>
+                        <th>
+                            ${this.escapeHTML(column)}
+                        </th>
                     `;
 
                 }
@@ -1191,623 +1151,508 @@ function generateTable(data) {
 
 
             html += `
-                </tr>
+                        </tr>
+                    </thead>
+                    <tbody>
             `;
 
-        }
-    );
+
+            flattened.forEach(
+                row => {
+
+                    html += `
+                        <tr>
+                    `;
 
 
-    html += `
-            </tbody>
-        </table>
-        </div>
-    `;
+                    this.columns.forEach(
+                        column => {
+
+                            const value =
+                                row[column];
 
 
-    container.innerHTML =
-        html;
+                            html += `
+                                <td>
+                                    ${
+                                        this.formatCell(
+                                            value
+                                        )
+                                    }
+                                </td>
+                            `;
 
-}
-
-
-/* =========================================================
-   FLATTEN OBJECT
-========================================================= */
-
-function flattenObject(
-    object,
-    prefix = "",
-    result = {}
-) {
-
-    Object.entries(
-        object
-    ).forEach(
-        ([key, value]) => {
-
-            const path =
-                prefix
-                    ? `${prefix}.${key}`
-                    : key;
+                        }
+                    );
 
 
-            if (
-                value !== null &&
-                typeof value === "object" &&
-                !Array.isArray(value)
-            ) {
+                    html += `
+                        </tr>
+                    `;
 
-                flattenObject(
-                    value,
-                    path,
-                    result
-                );
-
-            } else {
-
-                result[path] =
-                    value;
-
-            }
-
-        }
-    );
-
-
-    return result;
-
-}
-
-
-/* =========================================================
-   FORMAT CELL
-========================================================= */
-
-function formatCell(
-    value
-) {
-
-    if (
-        value === null ||
-        value === undefined
-    ) {
-
-        return `
-            <span class="null-value">
-                null
-            </span>
-        `;
-
-    }
-
-
-    if (
-        typeof value === "object"
-    ) {
-
-        return escapeHTML(
-            JSON.stringify(
-                value
-            )
-        );
-
-    }
-
-
-    return escapeHTML(
-        String(value)
-    );
-
-}
-
-
-/* =========================================================
-   CHART PREPARATION
-========================================================= */
-
-function prepareChart(data) {
-
-    let rows = [];
-
-
-    if (
-        Array.isArray(data) &&
-        data.every(
-            item =>
-                item !== null &&
-                typeof item === "object" &&
-                !Array.isArray(item)
-        )
-    ) {
-
-        rows =
-            data.map(
-                row =>
-                    flattenObject(
-                        row
-                    )
+                }
             );
-
-    }
-
-
-    if (!rows.length) {
-
-        clearChart();
-
-        return;
-
-    }
-
-
-    columns = [
-        ...new Set(
-            rows.flatMap(
-                row =>
-                    Object.keys(row)
-            )
-        )
-    ];
-
-
-    const xSelect =
-        document.getElementById(
-            "xColumn"
-        );
-
-
-    const ySelect =
-        document.getElementById(
-            "yColumn"
-        );
-
-
-    xSelect.innerHTML =
-        "";
-
-
-    ySelect.innerHTML =
-        "";
-
-
-    columns.forEach(
-        column => {
-
-            xSelect.innerHTML += `
-                <option value="${escapeAttribute(column)}">
-                    ${escapeHTML(column)}
-                </option>
-            `;
-
-
-            ySelect.innerHTML += `
-                <option value="${escapeAttribute(column)}">
-                    ${escapeHTML(column)}
-                </option>
-            `;
-
-        }
-    );
-
-
-    /*
-     * Automatically select:
-     *
-     * X = first non-numeric
-     * Y = first numeric
-     */
-
-    const numericColumns =
-        columns.filter(
-            column =>
-                rows.some(
-                    row =>
-                        typeof row[column] ===
-                        "number"
-                )
-        );
-
-
-    const textColumns =
-        columns.filter(
-            column =>
-                rows.some(
-                    row =>
-                        typeof row[column] !==
-                        "number"
-                )
-        );
-
-
-    if (
-        textColumns.length
-    ) {
-
-        xSelect.value =
-            textColumns[0];
-
-    }
-
-
-    if (
-        numericColumns.length
-    ) {
-
-        ySelect.value =
-            numericColumns[0];
-
-    }
-
-
-    renderChart();
-
-}
-
-
-/* =========================================================
-   RENDER CHART
-========================================================= */
-
-function renderChart() {
-
-    if (!tableData.length) {
-
-        clearChart();
-
-        return;
-
-    }
-
-
-    const xColumn =
-        document.getElementById(
-            "xColumn"
-        ).value;
-
-
-    const yColumn =
-        document.getElementById(
-            "yColumn"
-        ).value;
-
-
-    const chart =
-        document.getElementById(
-            "chartContainer"
-        );
-
-
-    const values =
-        tableData
-            .map(
-                row => ({
-                    label:
-                        row[xColumn],
-                    value:
-                        Number(
-                            row[yColumn]
-                        )
-                })
-            )
-            .filter(
-                item =>
-                    Number.isFinite(
-                        item.value
-                    )
-            );
-
-
-    if (!values.length) {
-
-        chart.innerHTML = `
-            <div class="empty-message">
-                No numeric values available for visualization.
-            </div>
-        `;
-
-        return;
-
-    }
-
-
-    const max =
-        Math.max(
-            ...values.map(
-                item =>
-                    item.value
-            )
-        );
-
-
-    const min =
-        Math.min(
-            ...values.map(
-                item =>
-                    item.value
-            )
-        );
-
-
-    const range =
-        max - min || 1;
-
-
-    let html =
-        `<div class="chart">`;
-
-
-    values.forEach(
-        item => {
-
-            const height =
-                Math.max(
-                    2,
-                    (
-                        (
-                            item.value -
-                            Math.min(
-                                0,
-                                min
-                            )
-                        ) /
-                        (
-                            max -
-                            Math.min(
-                                0,
-                                min
-                            ) || 1
-                        )
-                    ) *
-                    100
-                );
 
 
             html += `
-
-                <div
-                    class="bar-container"
-                >
-
-                    <div
-                        class="bar-value"
-                    >
-                        ${escapeHTML(
-                            String(
-                                item.value
-                            )
-                        )}
-                    </div>
-
-                    <div
-                        class="bar"
-                        style="
-                            height:${height}%
-                        "
-                        title="${escapeAttribute(
-                            String(
-                                item.value
-                            )
-                        )}"
-                    ></div>
-
-                    <div
-                        class="bar-label"
-                        title="${escapeAttribute(
-                            String(
-                                item.label
-                            )
-                        )}"
-                    >
-                        ${escapeHTML(
-                            String(
-                                item.label
-                            )
-                        )}
-                    </div>
-
+                    </tbody>
+                </table>
                 </div>
-
             `;
 
-        }
-    );
+
+            this.tableHtml =
+                html;
+
+        },
 
 
-    html += `
-        </div>
-    `;
+        flattenObject(
+            object,
+            prefix = "",
+            result = {}
+        ) {
+
+            Object.entries(
+                object
+            ).forEach(
+                ([key, value]) => {
+
+                    const path =
+                        prefix
+                            ? `${prefix}.${key}`
+                            : key;
 
 
-    chart.innerHTML =
-        html;
+                    if (
+                        value !== null &&
+                        typeof value === "object" &&
+                        !Array.isArray(value)
+                    ) {
 
-}
+                        this.flattenObject(
+                            value,
+                            path,
+                            result
+                        );
 
+                    } else {
 
-/* =========================================================
-   TABS
-========================================================= */
+                        result[path] =
+                            value;
 
-function showTab(
-    tab
-) {
+                    }
 
-    const table =
-        document.getElementById(
-            "tableTab"
-        );
-
-
-    const chart =
-        document.getElementById(
-            "chartTab"
-        );
-
-
-    const tableButton =
-        document.getElementById(
-            "tabTable"
-        );
-
-
-    const chartButton =
-        document.getElementById(
-            "tabChart"
-        );
-
-
-    if (
-        tab === "table"
-    ) {
-
-        table.style.display =
-            "block";
-
-        chart.style.display =
-            "none";
-
-        tableButton.classList.add(
-            "active"
-        );
-
-        chartButton.classList.remove(
-            "active"
-        );
-
-    } else {
-
-        table.style.display =
-            "none";
-
-        chart.style.display =
-            "block";
-
-        tableButton.classList.remove(
-            "active"
-        );
-
-        chartButton.classList.add(
-            "active"
-        );
-
-        renderChart();
-
-    }
-
-}
-
-
-/* =========================================================
-   COPY
-========================================================= */
-
-async function copyOutput() {
-
-    if (
-        !currentData
-    ) {
-
-        return;
-
-    }
-
-
-    const text =
-        JSON.stringify(
-            currentData,
-            null,
-            4
-        );
-
-
-    try {
-
-        await navigator
-            .clipboard
-            .writeText(
-                text
+                }
             );
 
 
-    } catch (error) {
+            return result;
 
-        console.error(
-            error
-        );
-
-    }
-
-}
+        },
 
 
-/* =========================================================
-   CLEAR
-========================================================= */
+        formatCell(
+            value
+        ) {
 
-function clearAll() {
+            if (
+                value === null ||
+                value === undefined
+            ) {
 
-    input.value = "";
+                return `
+                    <span class="null-value">
+                        null
+                    </span>
+                `;
 
-    output.textContent =
-        "Formatted JSON will appear here.";
-
-
-    status.className =
-        "status empty";
-
-    status.textContent =
-        "Waiting for JSON...";
-
-
-    clearResults();
-
-}
+            }
 
 
-function clearResults() {
+            if (
+                typeof value === "object"
+            ) {
 
-    currentData = null;
+                return this.escapeHTML(
+                    JSON.stringify(
+                        value
+                    )
+                );
 
-    tableData = [];
-
-    columns = [];
-
-
-    document.getElementById(
-        "tableContainer"
-    ).innerHTML = `
-        <div class="empty-message">
-            Array/object data will appear here.
-        </div>
-    `;
+            }
 
 
-    clearChart();
+            return this.escapeHTML(
+                String(value)
+            );
 
-}
-
-
-function clearChart() {
-
-    document.getElementById(
-        "chartContainer"
-    ).innerHTML = `
-        <div class="empty-message">
-            Numeric JSON data will be visualized here.
-        </div>
-    `;
-
-}
+        },
 
 
-/* =========================================================
-   EXAMPLE
-========================================================= */
+        prepareChart(data) {
 
-function loadExample() {
+            let rows = [];
 
-    input.value =
+
+            if (
+                Array.isArray(data) &&
+                data.every(
+                    item =>
+                        item !== null &&
+                        typeof item === "object" &&
+                        !Array.isArray(item)
+                )
+            ) {
+
+                rows =
+                    data.map(
+                        row =>
+                            this.flattenObject(
+                                row
+                            )
+                    );
+
+            }
+
+
+            if (!rows.length) {
+
+                this.clearChart();
+
+                return;
+
+            }
+
+
+            this.columns = [
+                ...new Set(
+                    rows.flatMap(
+                        row =>
+                            Object.keys(row)
+                    )
+                )
+            ];
+
+
+            this.tableData =
+                rows;
+
+
+            const numericColumns =
+                this.columns.filter(
+                    column =>
+                        rows.some(
+                            row =>
+                                typeof row[column] ===
+                                "number"
+                        )
+                );
+
+
+            const textColumns =
+                this.columns.filter(
+                    column =>
+                        rows.some(
+                            row =>
+                                typeof row[column] !==
+                                "number"
+                        )
+                );
+
+
+            if (
+                textColumns.length
+            ) {
+
+                this.xColumn =
+                    textColumns[0];
+
+            }
+
+
+            if (
+                numericColumns.length
+            ) {
+
+                this.yColumn =
+                    numericColumns[0];
+
+            }
+
+
+            this.renderChart();
+
+        },
+
+
+        renderChart() {
+
+            if (!this.tableData.length) {
+
+                this.clearChart();
+
+                return;
+
+            }
+
+
+            const values =
+                this.tableData
+                    .map(
+                        row => ({
+                            label:
+                                row[this.xColumn],
+                            value:
+                                Number(
+                                    row[this.yColumn]
+                                )
+                        })
+                    )
+                    .filter(
+                        item =>
+                            Number.isFinite(
+                                item.value
+                            )
+                    );
+
+
+            if (!values.length) {
+
+                this.chartHtml = `
+                    <div class="empty-message">
+                        No numeric values available for visualization.
+                    </div>
+                `;
+
+                return;
+
+            }
+
+
+            const max =
+                Math.max(
+                    ...values.map(
+                        item =>
+                            item.value
+                    )
+                );
+
+
+            const min =
+                Math.min(
+                    ...values.map(
+                        item =>
+                            item.value
+                    )
+                );
+
+
+            let html =
+                `<div class="chart">`;
+
+
+            values.forEach(
+                item => {
+
+                    const height =
+                        Math.max(
+                            2,
+                            (
+                                (
+                                    item.value -
+                                    Math.min(
+                                        0,
+                                        min
+                                    )
+                                ) /
+                                (
+                                    max -
+                                    Math.min(
+                                        0,
+                                        min
+                                    ) || 1
+                                )
+                            ) *
+                            100
+                        );
+
+
+                    html += `
+
+                        <div
+                            class="bar-container"
+                        >
+
+                            <div
+                                class="bar-value"
+                            >
+                                ${this.escapeHTML(
+                                    String(
+                                        item.value
+                                    )
+                                )}
+                            </div>
+
+                            <div
+                                class="bar"
+                                style="
+                                    height:${height}%
+                                "
+                                title="${this.escapeAttribute(
+                                    String(
+                                        item.value
+                                    )
+                                )}"
+                            ></div>
+
+                            <div
+                                class="bar-label"
+                                title="${this.escapeAttribute(
+                                    String(
+                                        item.label
+                                    )
+                                )}"
+                            >
+                                ${this.escapeHTML(
+                                    String(
+                                        item.label
+                                    )
+                                )}
+                            </div>
+
+                        </div>
+
+                    `;
+
+                }
+            );
+
+
+            html += `
+                </div>
+            `;
+
+
+            this.chartHtml =
+                html;
+
+        },
+
+
+        showTab(
+            tab
+        ) {
+
+            this.activeTab =
+                tab;
+
+
+            if (
+                tab === "chart"
+            ) {
+
+                this.renderChart();
+
+            }
+
+        },
+
+
+        async copyOutput() {
+
+            if (
+                !this.currentData
+            ) {
+
+                return;
+
+            }
+
+
+            const text =
+                JSON.stringify(
+                    this.currentData,
+                    null,
+                    4
+                );
+
+
+            try {
+
+                await navigator
+                    .clipboard
+                    .writeText(
+                        text
+                    );
+
+
+            } catch (error) {
+
+                console.error(
+                    error
+                );
+
+            }
+
+        },
+
+
+        clearAll() {
+
+            this.jsonInput = "";
+
+            this.jsonOutput =
+                "Formatted JSON will appear here.";
+
+
+            this.statusClass =
+                "status empty";
+
+            this.statusText =
+                "Waiting for JSON...";
+
+
+            this.clearResults();
+
+        },
+
+
+        clearResults() {
+
+            this.currentData = null;
+
+            this.tableData = [];
+
+            this.columns = [];
+
+
+            this.tableHtml = `
+                <div class="empty-message">
+                    Array/object data will appear here.
+                </div>
+            `;
+
+
+            this.clearChart();
+
+        },
+
+
+        clearChart() {
+
+            this.chartHtml = `
+                <div class="empty-message">
+                    Numeric JSON data will be visualized here.
+                </div>
+            `;
+
+        },
+
+
+        loadExample() {
+
+            this.jsonInput =
 `[
     {
         "name": "Reno",
@@ -1836,62 +1681,55 @@ function loadExample() {
 ]`;
 
 
-    formatJSON();
+            this.formatJSON();
 
-}
-
-
-/* =========================================================
-   ESCAPE HTML
-========================================================= */
-
-function escapeHTML(
-    value
-) {
-
-    return String(
-        value
-    )
-        .replace(
-            /&/g,
-            "&amp;"
-        )
-        .replace(
-            /</g,
-            "&lt;"
-        )
-        .replace(
-            />/g,
-            "&gt;"
-        )
-        .replace(
-            /"/g,
-            "&quot;"
-        )
-        .replace(
-            /'/g,
-            "&#039;"
-        );
-
-}
+        },
 
 
-function escapeAttribute(
-    value
-) {
+        escapeHTML(
+            value
+        ) {
 
-    return escapeHTML(
-        value
-    );
+            return String(
+                value
+            )
+                .replace(
+                    /&/g,
+                    "&amp;"
+                )
+                .replace(
+                    /</g,
+                    "&lt;"
+                )
+                .replace(
+                    />/g,
+                    "&gt;"
+                )
+                .replace(
+                    /"/g,
+                    "&quot;"
+                )
+                .replace(
+                    /'/g,
+                    "&#039;"
+                );
 
-}
+        },
 
 
-/* =========================================================
-   INITIALIZE
-========================================================= */
+        escapeAttribute(
+            value
+        ) {
 
-validateJSON();
+            return this.escapeHTML(
+                value
+            );
+
+        }
+
+    }
+
+});
 
 </script>
 

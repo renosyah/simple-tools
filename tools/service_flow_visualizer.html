@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Service Flow Visualizer</title>
+<script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
+<script src="shared/vue-canvas-viewport.js"></script>
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;overflow:hidden;background:#080e1a;color:#e5e7eb;font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif}
@@ -16,7 +18,6 @@ button.small{padding:4px 7px;font-size:11px}
 input,textarea,select{width:100%;background:#080e1a;color:#e5e7eb;border:1px solid #475569;border-radius:6px;padding:7px;outline:none}
 input:focus,textarea:focus,select:focus{border-color:#60a5fa}
 textarea{resize:vertical;font:11px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace}
-
 .toolbar{height:62px;display:flex;align-items:center;gap:7px;padding:10px 14px;background:#111827;border-bottom:1px solid #334155;z-index:20}
 .title{font-weight:750}.sub{font-size:10px;color:#64748b}.spacer{flex:1}
 .mode{font-size:10px;color:#94a3b8;min-width:64px;text-align:center}
@@ -47,6 +48,8 @@ textarea{resize:vertical;font:11px/1.45 ui-monospace,SFMono-Regular,Menlo,monosp
 .node.waiting{border-color:#f59e0b;box-shadow:0 0 0 2px #f59e0b33,0 0 25px #f59e0b22}
 .node.error{border-color:#f87171;box-shadow:0 0 0 2px #f8717133,0 0 25px #f8717122}
 .node.cycle{border-color:#f87171;box-shadow:0 0 0 2px #f8717155,0 0 28px #f8717133}
+.node.connecting{border-color:#60a5fa;box-shadow:0 0 0 2px #60a5fa44,0 0 25px #60a5fa22}
+.node.connectTarget{border-color:#a78bfa;box-shadow:0 0 0 2px #a78bfa44,0 0 25px #a78bfa22}
 .nhead{display:flex;align-items:center;gap:8px;padding:9px 10px;background:#1e293b;border-bottom:1px solid #334155;font-size:12px;font-weight:750}
 .nbody{padding:7px 10px;font-size:9px;color:#94a3b8;line-height:1.45}.ntype{color:#64748b;font-size:8px;margin-left:auto}
 .nstatus{font-size:8px;letter-spacing:.04em;text-transform:uppercase;padding:4px 10px 8px;color:#64748b}
@@ -58,17 +61,12 @@ textarea{resize:vertical;font:11px/1.45 ui-monospace,SFMono-Regular,Menlo,monosp
 .edge-line.selected{stroke:#facc15;stroke-width:2.5}
 .edge-response{stroke-dasharray:7 5;opacity:.8}
 .edge-label{font-size:9px;paint-order:stroke;stroke:#080e1a;stroke-width:4px;stroke-linejoin:round;pointer-events:none}
-.connection-drag{position:absolute;pointer-events:none;z-index:50}
+.connection-drag{position:absolute;pointer-events:none;z-index:50;height:2px;background:#60a5fa;transform-origin:0 50%}
 .packet{filter:drop-shadow(0 0 6px currentColor)}
-.node.connecting{border-color:#60a5fa;box-shadow:0 0 0 2px #60a5fa44,0 0 25px #60a5fa22}
 .connector{flex:0 0 auto;width:18px;height:18px;border-radius:50%;border:1px solid #60a5fa;background:#172554;color:#93c5fd;display:flex;align-items:center;justify-content:center;font-size:11px;cursor:crosshair}
-.node.connectTarget{border-color:#a78bfa;box-shadow:0 0 0 2px #a78bfa44,0 0 25px #a78bfa22}
 .notice{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;width:min(500px,80%);color:#64748b;border:1px dashed #475569;border-radius:10px;padding:25px;pointer-events:none}
 .notice b{display:block;color:#cbd5e1;margin-bottom:5px}
 .banner{position:absolute;left:50%;top:12px;transform:translateX(-50%);z-index:30;max-width:min(640px,90%);background:#2a0e12;border:1px solid #7f1d1d;color:#fca5a5;padding:10px 14px;border-radius:8px;font-size:12px;line-height:1.45;box-shadow:0 10px 30px #0008}
-.kv{display:grid;grid-template-columns:80px 1fr;gap:5px;font-size:10px;margin:4px 0}.kv b{color:#94a3b8}
-.payload{background:#080e1a;border:1px solid #263449;border-radius:6px;padding:8px;white-space:pre-wrap;word-break:break-word;font:10px/1.45 monospace;max-height:220px;overflow:auto}
-.errorbox{padding:9px;border:1px solid #7f1d1d;background:#2a0e12;border-radius:7px;font-size:10px;color:#fca5a5}
 .hidden{display:none!important}
 .timeline-controls{display:flex;gap:6px}.timeline-controls button{flex:1}
 .range{width:100%;margin-top:8px;accent-color:#2563eb}
@@ -78,1113 +76,907 @@ textarea{resize:vertical;font:11px/1.45 ui-monospace,SFMono-Regular,Menlo,monosp
 </style>
 </head>
 <body>
-
-<div class="toolbar">
-  <div class="title">Service Flow Visualizer</div>
-  <div class="sub">REST · Webhook · Socket · Database</div>
-  <div class="spacer"></div>
-  <span id="mode" class="mode">Ready</span>
-  <button class="primary" onclick="runFlow()">▶ Run</button>
-  <button onclick="pauseFlow()">⏸ Pause</button>
-  <button onclick="resetFlow()">↻ Reset</button>
-  <button onclick="fitAll()">Fit</button>
-  <button class="small" onclick="changeZoom(-.1)">−</button>
-  <span id="zoomLabel" class="mode">100%</span>
-  <button class="small" onclick="changeZoom(.1)">+</button>
-</div>
-
-<div class="app">
-<aside class="sidebar">
-  <div class="section">
-    <div class="st">Add Node</div>
-    <div class="grid2">
-      <button onclick="addNode('service')">＋ Service</button>
-      <button onclick="addNode('database')">＋ Database</button>
-      <button onclick="addNode('external')">＋ External</button>
-      <button onclick="addNode('queue')">＋ Queue</button>
-    </div>
-    <div class="hint" style="margin-top:8px">Drag nodes on the canvas. Drag the ↗ connector from one node onto another to create a communication.</div>
+<div id="app">
+  <div class="toolbar">
+    <div class="title">Service Flow Visualizer</div>
+    <div class="sub">REST · Webhook · Socket · Database</div>
+    <div class="spacer"></div>
+    <span class="mode" :class="modeClass">{{ mode }}</span>
+    <button class="primary" @click="runFlow">▶ Run</button>
+    <button @click="pauseFlow">⏸ Pause</button>
+    <button @click="resetFlow">↻ Reset</button>
+    <button @click="fitAll">Fit</button>
+    <button class="small" @click="vpChangeZoom(-0.1)">−</button>
+    <span class="mode">{{ vpZoomLabel }}</span>
+    <button class="small" @click="vpChangeZoom(0.1)">+</button>
   </div>
 
-  <div class="section">
-    <div class="st">Nodes</div>
-    <div id="nodeList"></div>
-  </div>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="section">
+        <div class="st">Add Node</div>
+        <div class="grid2">
+          <button @click="addNode('service')">＋ Service</button>
+          <button @click="addNode('database')">＋ Database</button>
+          <button @click="addNode('external')">＋ External</button>
+          <button @click="addNode('queue')">＋ Queue</button>
+        </div>
+        <div class="hint" style="margin-top:8px">Drag nodes on the canvas. Drag the ↗ connector from one node onto another to create a communication.</div>
+      </div>
+      <div class="section">
+        <div class="st">Nodes</div>
+        <div v-for="n in nodes" :key="n.id" class="item" :class="{active: selected===n.id}" @click="selectNode(n.id)">
+          <span class="dot" :class="dotClass(n.type)"></span>
+          <span>{{ n.name }}</span>
+          <span class="badge">{{ typeLabel(n.type) }}</span>
+        </div>
+      </div>
+      <div class="section">
+        <div class="st">Communications</div>
+        <div class="hint">Click a line or a row to edit payload, method, and error simulation.</div>
+        <div v-for="l in links" :key="l.id" class="item" :class="{active: selectedLink===l.id}" @click="selectLink(l.id)">
+          <span>{{ linkMeta(l) }}</span>
+          <span style="flex:1">{{ nodeName(l.from) }} → {{ nodeName(l.to) }}</span>
+          <button class="small" title="Edit" @click.stop="selectLink(l.id)">✎</button>
+          <button class="small danger" title="Delete" @click.stop="deleteLink(l.id)">×</button>
+        </div>
+      </div>
+    </aside>
 
-  <div class="section">
-    <div class="st">Communications</div>
-    <div class="hint">Click a line or a row to edit payload, method, and error simulation.</div>
-    <div id="connectionList" style="margin-top:9px"></div>
-  </div>
-</aside>
+    <main ref="viewport" class="workspace" @mousedown="onWorkspaceMouseDown">
+      <svg ref="svg" class="svg" :style="vpTransformStyle" viewBox="0 0 6000 4000">
+        <defs>
+          <marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L9 4.5 L0 9 Z" fill="#64748b"/></marker>
+          <marker id="arrowActive" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L9 4.5 L0 9 Z" fill="#4ade80"/></marker>
+          <marker id="arrowError" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L9 4.5 L0 9 Z" fill="#f87171"/></marker>
+          <marker id="arrowSelected" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 L9 4.5 L0 9 Z" fill="#facc15"/></marker>
+        </defs>
+        <g v-for="lv in linkVisuals" :key="lv.id" class="link">
+          <path :d="lv.reqD" class="edge-hit" @click.stop="selectLink(lv.id)" @dblclick.stop="selectLink(lv.id)"/>
+          <path :d="lv.resD" class="edge-hit" @click.stop="selectLink(lv.id)" @dblclick.stop="selectLink(lv.id)"/>
+          <path :d="lv.reqD" class="edge-line" :class="lv.reqClasses" :marker-end="lv.reqMarker"/>
+          <path :d="lv.resD" class="edge-line edge-response" :class="lv.resClasses" :marker-end="lv.resMarker"/>
+          <text :x="lv.reqLx" :y="lv.reqLy" :fill="lv.reqFill" class="edge-label" text-anchor="middle">REQUEST</text>
+          <text :x="lv.resLx" :y="lv.resLy" :fill="lv.resFill" class="edge-label" text-anchor="middle">RESPONSE</text>
+        </g>
+        <g v-for="p in packetVisuals" :key="p.id" class="packetGroup">
+          <rect v-if="p.response" :x="p.x-6" :y="p.y-6" width="12" height="12" rx="2" :fill="p.color" class="packet"/>
+          <circle v-else :cx="p.x" :cy="p.y" r="7" :fill="p.color" class="packet"/>
+          <text :x="p.x" :y="p.y-12" :fill="p.textFill" font-size="9" text-anchor="middle">{{ p.label }}</text>
+        </g>
+      </svg>
 
-<main id="workspace" class="workspace">
-  <svg id="svg" class="svg" viewBox="0 0 6000 4000">
-    <defs>
-      <marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto" markerUnits="userSpaceOnUse">
-        <path d="M0 0 L9 4.5 L0 9 Z" fill="#64748b"/>
-      </marker>
-      <marker id="arrowActive" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto" markerUnits="userSpaceOnUse">
-        <path d="M0 0 L9 4.5 L0 9 Z" fill="#4ade80"/>
-      </marker>
-      <marker id="arrowError" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto" markerUnits="userSpaceOnUse">
-        <path d="M0 0 L9 4.5 L0 9 Z" fill="#f87171"/>
-      </marker>
-      <marker id="arrowSelected" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto" markerUnits="userSpaceOnUse">
-        <path d="M0 0 L9 4.5 L0 9 Z" fill="#facc15"/>
-      </marker>
-    </defs>
-  </svg>
-  <div id="canvas" class="canvas"></div>
-  <div id="notice" class="notice">
-    <b>Service Flow Visualizer</b>
-    Add services, drag ↗ from node to node, then press <b>Run</b>.<br>
-    Requests wait for downstream dependencies before a response is sent upstream.
-  </div>
-  <div id="banner" class="banner hidden"></div>
-</main>
+      <div ref="canvas" class="canvas" :style="vpTransformStyle">
+        <div v-for="n in nodes" :key="n.id" class="node"
+          :class="nodeClasses(n)"
+          :style="{left: n.x+'px', top: n.y+'px'}"
+          :data-id="n.id"
+          :ref="'node-'+n.id"
+          @mousedown="onNodeMouseDown($event, n.id)"
+          @click.stop="selectNode(n.id)">
+          <div class="nhead">
+            <span class="dot" :class="dotClass(n.type)"></span>
+            <span>{{ n.name }}</span>
+            <span class="ntype">{{ typeLabel(n.type) }}</span>
+            <span class="connector" title="Drag to another node" @mousedown.stop="beginConnection($event, n.id)">↗</span>
+          </div>
+          <div class="nbody">{{ n.description || 'Drag the ↗ connector onto another node to create a communication.' }}</div>
+          <div v-if="nodeStatus(n.id)" class="nstatus" :class="nodeRuntime[n.id]">{{ nodeStatus(n.id) }}</div>
+        </div>
+      </div>
 
-<aside class="right">
-  <div class="section">
-    <div class="st">Inspector</div>
-    <div id="inspector" class="hint">Select a node or communication.</div>
+      <div v-if="connectDrag" class="connection-drag" :style="connectDragStyle"></div>
+
+      <div v-if="!nodes.length" class="notice">
+        <b>Service Flow Visualizer</b>
+        Add services, drag ↗ from node to node, then press <b>Run</b>.<br>
+        Requests wait for downstream dependencies before a response is sent upstream.
+      </div>
+      <div v-if="bannerText" class="banner">{{ bannerText }}</div>
+    </main>
+
+    <aside class="right" ref="inspector">
+      <div class="section">
+        <div class="st">Inspector</div>
+        <div v-if="selectedNode">
+          <label class="label">Name</label>
+          <input v-model="nodeForm.name">
+          <label class="label">Type</label>
+          <select v-model="nodeForm.type">
+            <option v-for="t in nodeTypes" :key="t" :value="t">{{ typeLabel(t) }}</option>
+          </select>
+          <label class="label">Description</label>
+          <textarea v-model="nodeForm.description" rows="3"></textarea>
+          <div class="row" style="margin-top:8px">
+            <button class="primary" @click="saveNode">Save</button>
+            <button class="danger" @click="deleteNode(selected)">Delete</button>
+          </div>
+        </div>
+        <div v-else-if="selectedLinkObj">
+          <label class="label">From</label>
+          <select v-model="linkForm.from">
+            <option v-for="n in nodes" :key="n.id" :value="n.id">{{ n.name }}</option>
+          </select>
+          <label class="label">To</label>
+          <select v-model="linkForm.to">
+            <option v-for="n in nodes" :key="n.id" :value="n.id">{{ n.name }}</option>
+          </select>
+          <label class="label">Communication Type</label>
+          <select v-model="linkForm.type">
+            <option v-for="t in commTypes" :key="t">{{ t }}</option>
+          </select>
+          <div v-show="linkForm.type!=='DATABASE'">
+            <div class="grid2">
+              <div><label class="label">HTTP Method</label>
+                <select v-model="linkForm.method">
+                  <option v-for="m in httpMethods" :key="m">{{ m }}</option>
+                </select>
+              </div>
+              <div><label class="label">Path</label><input v-model="linkForm.path"></div>
+            </div>
+          </div>
+          <label class="label">{{ linkForm.type==='DATABASE' ? 'SQL Query / Request' : 'Request / Query / Message' }}</label>
+          <textarea v-model="linkForm.payload" rows="6"></textarea>
+          <label class="label">Response</label>
+          <textarea v-model="linkForm.response" rows="5"></textarea>
+          <label class="checkline"><input type="checkbox" v-model="linkForm.simulateError"> Simulate Error</label>
+          <label class="label">Error Type</label>
+          <select v-model="linkForm.errorType">
+            <option v-for="e in errorTypes" :key="e">{{ e }}</option>
+          </select>
+          <label class="label">Error Message</label>
+          <input v-model="linkForm.errorMessage">
+          <label class="label">Duration (ms)</label>
+          <input v-model.number="linkForm.duration" type="number" min="200" max="8000" step="50">
+          <div class="row" style="margin-top:8px">
+            <button class="primary" @click="saveLink">Save Communication</button>
+            <button class="danger" @click="deleteLink(selectedLink)">Delete Communication</button>
+          </div>
+        </div>
+        <div v-else class="hint">Select a node or communication.</div>
+      </div>
+      <div class="section">
+        <div class="st">Simulation</div>
+        <div class="timeline-controls">
+          <button class="primary" @click="runFlow">▶ Run</button>
+          <button @click="pauseFlow">⏸ Pause</button>
+          <button @click="resetFlow">↻ Reset</button>
+        </div>
+        <input class="range" type="range" min="0" max="100" v-model.number="timeline" @input="seekFlow(timeline)">
+        <div class="hint">{{ simStatus }}</div>
+      </div>
+      <div>
+        <div class="st">Execution Log</div>
+        <div ref="log" class="log">
+          <template v-if="!logs.length"><span class="muted">No execution yet.</span></template>
+          <div v-for="(entry,i) in logs" :key="i" class="logrow">
+            <span class="muted">{{ entry.time }}</span><br>
+            <span :class="entry.cls">{{ entry.text }}</span>
+          </div>
+        </div>
+      </div>
+    </aside>
   </div>
-  <div class="section">
-    <div class="st">Simulation</div>
-    <div class="timeline-controls">
-      <button class="primary" onclick="runFlow()">▶ Run</button>
-      <button onclick="pauseFlow()">⏸ Pause</button>
-      <button onclick="resetFlow()">↻ Reset</button>
-    </div>
-    <input id="timeline" class="range" type="range" min="0" max="100" value="0" oninput="seekFlow(this.value)">
-    <div id="simStatus" class="hint">Ready.</div>
-  </div>
-  <div>
-    <div class="st">Execution Log</div>
-    <div id="log" class="log"><span class="muted">No execution yet.</span></div>
-  </div>
-</aside>
 </div>
 
 <script>
-/* =============================================================================
-   Service Flow Visualizer
-   Frontend-only dependency-graph simulator for service communications.
-   ============================================================================= */
-
-const ERROR_TYPES = [
+var ERROR_TYPES = [
   "Invalid payload","HTTP 400","HTTP 401","HTTP 403","HTTP 404",
   "HTTP 500","Timeout","Connection refused","DB error","Invalid response"
 ];
 
-const state = {
-  nodes: new Map(),
-  links: [],
-  positions: new Map(),
-  selected: null,
-  selectedLink: null,
-  zoom: 1, panX: 0, panY: 0,
-  running: false, paused: false, step: 0, timer: null,
-  packet: null,
-  packets: [],
-  logs: [],
-  connecting: null,
-  linkRuntime: new Map(),
-  nodeRuntime: new Map(),
-  contexts: new Map(),
-  executions: new Map(),
-  cycleNodes: new Set(),
-  animToken: 0,
-  hadError: false
-};
-
-const canvas = document.getElementById("canvas");
-const svg = document.getElementById("svg");
-const workspace = document.getElementById("workspace");
-
-/* ---------- helpers ---------- */
-
-function uid(prefix){ return prefix + "_" + Math.random().toString(36).slice(2, 8); }
-function esc(v){ return String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
-function typeLabel(t){ return ({service:"SERVICE", database:"DATABASE", external:"EXTERNAL API", queue:"QUEUE"})[t] || t; }
-function dotClass(t){ return t === "database" ? "db" : t === "external" ? "external" : t === "queue" ? "queue" : ""; }
-function nodeName(id){ return state.nodes.get(id)?.name || "(deleted)"; }
-function incomingLinks(id){ return state.links.filter(l => l.to === id); }
-function outgoingLinks(id){ return state.links.filter(l => l.from === id); }
-function payloadOf(l){ return l.type === "DATABASE" ? (l.query || l.request || "") : (l.request || l.query || ""); }
-
-function setPos(id, x, y){
-  const p = state.positions.get(id);
-  if(p){ p.x = x; p.y = y; }
-  else state.positions.set(id, {x, y});
-  const n = state.nodes.get(id);
-  if(n){ n.x = x; n.y = y; }
-}
-
-function showBanner(text){
-  const el = document.getElementById("banner");
-  el.textContent = text;
-  el.classList.toggle("hidden", !text);
-}
-
-/* ---------- node management ---------- */
-
-function addNode(type){
-  const id = uid(type);
-  const count = [...state.nodes.values()].filter(n => n.type === type).length + 1;
-  const names = {service:"Service", database:"Database", external:"External API", queue:"Message Queue"};
-  const name = type === "service" ? "Service " + count : (count > 1 ? names[type] + " " + count : names[type]);
-  const x = 120 + (state.nodes.size % 3) * 320;
-  const y = 120 + Math.floor(state.nodes.size / 3) * 220;
-  state.nodes.set(id, {id, name, type, description:"", x, y});
-  setPos(id, x, y);
-  state.selected = id;
-  state.selectedLink = null;
-  state.cycleNodes.clear();
-  showBanner("");
-  render();
-}
-
-function deleteNode(id){
-  if(state.running) resetFlow();
-  state.links = state.links.filter(l => l.from !== id && l.to !== id);
-  state.nodes.delete(id);
-  state.positions.delete(id);
-  state.nodeRuntime.delete(id);
-  if(state.selected === id) state.selected = null;
-  state.cycleNodes.delete(id);
-  render();
-}
-
-function saveNode(){
-  const n = state.nodes.get(state.selected);
-  if(!n) return;
-  n.name = document.getElementById("inName").value.trim() || "Unnamed";
-  n.type = document.getElementById("inType").value;
-  n.description = document.getElementById("inDesc").value;
-  render();
-}
-
-/* ---------- communication management ---------- */
-
-function defaultLinkData(from, to){
-  const toNode = state.nodes.get(to);
-  const isDb = toNode?.type === "database";
-  return {
-    id: uid("link"),
-    from, to,
-    type: isDb ? "DATABASE" : "REST",
-    method: isDb ? "QUERY" : "POST",
-    path: isDb ? "" : "/api/example",
-    request: isDb ? "" : '{\n  "id": 123\n}',
-    query: isDb ? "SELECT *\nFROM users\nWHERE id = 123;" : "",
-    response: isDb ? '{\n  "id": 123,\n  "name": "Reno"\n}' : '{\n  "success": true\n}',
-    simulateError: false,
-    errorType: "Invalid payload",
-    errorMessage: "Payload validation failed.",
-    duration: 900
-  };
-}
-
-function addLink(data){
-  const l = Object.assign(defaultLinkData(data?.from || "", data?.to || ""), data || {});
-  if(!l.id) l.id = uid("link");
-  state.links.push(l);
-  state.selectedLink = l.id;
-  state.selected = null;
-  state.cycleNodes.clear();
-  showBanner("");
-  render();
-}
-
-function openConnection(){
-  if(state.nodes.size < 2){ alert("Add at least two nodes first."); return; }
-  const ids = [...state.nodes.keys()];
-  addLink({from: ids[0], to: ids[1]});
-}
-
-function editLink(id){
-  if(!state.links.some(x => x.id === id)) return;
-  state.selectedLink = id;
-  state.selected = null;
-  render();
-  document.getElementById("inspector")?.scrollIntoView({behavior:"smooth", block:"start"});
-}
-
-function deleteLink(id){
-  if(state.running) resetFlow();
-  state.links = state.links.filter(x => x.id !== id);
-  state.linkRuntime.delete(id);
-  if(state.selectedLink === id) state.selectedLink = null;
-  state.packets = state.packets.filter(p => p.link !== id);
-  render();
-}
-
-function saveLink(){
-  const l = state.links.find(x => x.id === state.selectedLink);
-  if(!l){ state.selectedLink = null; return render(); }
-  const from = document.getElementById("lf").value;
-  const to = document.getElementById("lt").value;
-  if(from === to){ alert("A communication cannot point to the same node."); return; }
-  l.from = from;
-  l.to = to;
-  l.type = document.getElementById("ltype").value;
-  l.method = document.getElementById("method")?.value || l.method;
-  l.path = document.getElementById("path")?.value || l.path;
-  const req = document.getElementById("request").value;
-  if(l.type === "DATABASE") l.query = req; else l.request = req;
-  l.response = document.getElementById("response").value;
-  l.simulateError = document.getElementById("simerr").checked;
-  l.errorType = document.getElementById("errtype").value;
-  l.errorMessage = document.getElementById("errmsg").value;
-  const dur = Number(document.getElementById("ldur")?.value);
-  if(Number.isFinite(dur) && dur >= 200) l.duration = dur;
-  state.cycleNodes.clear();
-  showBanner("");
-  render();
-}
-
-function linkTypeChanged(){
-  const t = document.getElementById("ltype")?.value;
-  if(!t) return;
-  document.getElementById("restFields")?.classList.toggle("hidden", t === "DATABASE");
-  const lab = document.getElementById("reqLabel");
-  if(lab) lab.textContent = t === "DATABASE" ? "SQL Query / Request" : "Request / Query / Message";
-}
-
-/* ---------- geometry: arrows attach to actual node boundaries ---------- */
-
-function nodeRect(id){
-  const el = canvas.querySelector(`.node[data-id="${CSS.escape(id)}"]`);
-  const p = state.positions.get(id);
-  if(!p) return null;
-  const w = el ? el.offsetWidth : 220;
-  const h = el ? el.offsetHeight : 76;
-  return {x:p.x, y:p.y, w, h, cx:p.x + w/2, cy:p.y + h/2};
-}
-
-function pickSides(a, b){
-  const dx = b.cx - a.cx, dy = b.cy - a.cy;
-  if(Math.abs(dx) >= Math.abs(dy)) return dx >= 0 ? ["right","left"] : ["left","right"];
-  return dy >= 0 ? ["bottom","top"] : ["top","bottom"];
-}
-
-function anchor(rect, side, lane){
-  const spread = 11;
-  if(side === "right")  return {x: rect.x + rect.w, y: rect.cy + lane * spread, side};
-  if(side === "left")   return {x: rect.x,          y: rect.cy + lane * spread, side};
-  if(side === "bottom") return {x: rect.cx + lane * spread, y: rect.y + rect.h, side};
-  return {x: rect.cx + lane * spread, y: rect.y, side};
-}
-
-function ctrl(pt, dist){
-  if(pt.side === "right")  return {x: pt.x + dist, y: pt.y};
-  if(pt.side === "left")   return {x: pt.x - dist, y: pt.y};
-  if(pt.side === "bottom") return {x: pt.x, y: pt.y + dist};
-  return {x: pt.x, y: pt.y - dist};
-}
-
-function cubic(a, b, c, d, t){
-  const u = 1 - t;
-  return {
-    x: u*u*u*a.x + 3*u*u*t*b.x + 3*u*t*t*c.x + t*t*t*d.x,
-    y: u*u*u*a.y + 3*u*u*t*b.y + 3*u*t*t*c.y + t*t*t*d.y
-  };
-}
-
-function pathD(p0, p1, p2, p3){
-  return `M ${p0.x} ${p0.y} C ${p1.x} ${p1.y}, ${p2.x} ${p2.y}, ${p3.x} ${p3.y}`;
-}
-
-function linkGeometry(fromId, toId){
-  const a = nodeRect(fromId), b = nodeRect(toId);
-  if(!a || !b) return null;
-  const [fromSide, toSide] = pickSides(a, b);
-  const dist = Math.max(70, Math.hypot(b.cx - a.cx, b.cy - a.cy) * 0.38);
-  const req0 = anchor(a, fromSide, -1);
-  const req3 = anchor(b, toSide, -1);
-  const res0 = anchor(b, toSide, 1);
-  const res3 = anchor(a, fromSide, 1);
-  return {
-    request:  {p0:req0, p1:ctrl(req0, dist), p2:ctrl(req3, dist), p3:req3},
-    response: {p0:res0, p1:ctrl(res0, dist), p2:ctrl(res3, dist), p3:res3}
-  };
-}
-
-/* ---------- rendering ---------- */
-
-function render(){
-  renderNodes();
-  renderLinks();
-  renderLists();
-  renderInspector();
-  updateTransform();
-  document.getElementById("notice").classList.toggle("hidden", state.nodes.size > 0);
-}
-
-function nodeStatusText(id){
-  const s = state.nodeRuntime.get(id);
-  if(s === "processing") return "Processing";
-  if(s === "waiting") return "Waiting for dependency";
-  if(s === "error") return "Error";
-  if(state.cycleNodes.has(id)) return "Cycle";
-  return "";
-}
-
-function renderNodes(){
-  canvas.innerHTML = "";
-  state.nodes.forEach(n => {
-    const p = state.positions.get(n.id);
-    const nr = state.nodeRuntime.get(n.id);
-    const el = document.createElement("div");
-    el.className = "node";
-    if(state.selected === n.id) el.classList.add("selected");
-    if(nr === "processing") el.classList.add("active");
-    if(nr === "waiting") el.classList.add("waiting");
-    if(nr === "error") el.classList.add("error");
-    if(state.cycleNodes.has(n.id)) el.classList.add("cycle");
-    el.dataset.id = n.id;
-    el.style.left = p.x + "px";
-    el.style.top = p.y + "px";
-    const status = nodeStatusText(n.id);
-    el.innerHTML =
-      `<div class="nhead">` +
-        `<span class="dot ${dotClass(n.type)}"></span>` +
-        `<span>${esc(n.name)}</span>` +
-        `<span class="ntype">${typeLabel(n.type)}</span>` +
-        `<span class="connector" title="Drag to another node">↗</span>` +
-      `</div>` +
-      `<div class="nbody">${esc(n.description || "Drag the ↗ connector onto another node to create a communication.")}</div>` +
-      (status ? `<div class="nstatus ${nr || ""}">${esc(status)}</div>` : "");
-    const connector = el.querySelector(".connector");
-    connector.onmousedown = e => beginConnection(e, n.id);
-    el.onmousedown = e => {
-      if(e.button === 0 && (e.ctrlKey || e.shiftKey)) beginConnection(e, n.id);
-      else dragNode(e, n.id);
+new Vue({
+  el: "#app",
+  mixins: [CanvasViewportMixin],
+  data: function() {
+    return {
+      nodes: [],
+      links: [],
+      selected: null,
+      selectedLink: null,
+      running: false,
+      paused: false,
+      packets: [],
+      logs: [],
+      connecting: null,
+      connectDrag: null,
+      linkRuntime: {},
+      nodeRuntime: {},
+      contexts: {},
+      executions: {},
+      cycleNodes: [],
+      animToken: 0,
+      hadError: false,
+      mode: "Ready",
+      simStatus: "Ready.",
+      bannerText: "",
+      timeline: 0,
+      geomTick: 0,
+      nodeForm: { name: "", type: "service", description: "" },
+      linkForm: {
+        from: "", to: "", type: "REST", method: "POST", path: "/api/example",
+        payload: "", response: "", simulateError: false,
+        errorType: "Invalid payload", errorMessage: "Payload validation failed.", duration: 900
+      },
+      nodeTypes: ["service","database","external","queue"],
+      commTypes: ["REST","WEBHOOK","SOCKET","DATABASE"],
+      httpMethods: ["GET","POST","PUT","PATCH","DELETE"],
+      errorTypes: ERROR_TYPES
     };
-    el.onclick = e => { e.stopPropagation(); state.selected = n.id; state.selectedLink = null; render(); };
-    canvas.appendChild(el);
-  });
-}
-
-function markerFor(active, error, selected){
-  if(error && active) return "url(#arrowError)";
-  if(active) return "url(#arrowActive)";
-  if(selected) return "url(#arrowSelected)";
-  return "url(#arrow)";
-}
-
-function renderLinks(){
-  svg.querySelectorAll(".link").forEach(x => x.remove());
-  state.links.forEach(l => {
-    const geo = linkGeometry(l.from, l.to);
-    if(!geo) return;
-    const rt = state.linkRuntime.get(l.id) || {};
-    const selected = state.selectedLink === l.id;
-    const reqD = pathD(geo.request.p0, geo.request.p1, geo.request.p2, geo.request.p3);
-    const resD = pathD(geo.response.p0, geo.response.p1, geo.response.p2, geo.response.p3);
-
-    const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
-    g.classList.add("link");
-    g.dataset.id = l.id;
-
-    const hitReq = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    hitReq.setAttribute("d", reqD); hitReq.classList.add("edge-hit");
-    const hitRes = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    hitRes.setAttribute("d", resD); hitRes.classList.add("edge-hit");
-    [hitReq, hitRes].forEach(h => {
-      h.addEventListener("click", e => { e.stopPropagation(); editLink(l.id); });
-      h.addEventListener("dblclick", e => { e.stopPropagation(); editLink(l.id); });
-    });
-
-    const reqPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    reqPath.setAttribute("d", reqD);
-    reqPath.classList.add("edge-line");
-    if(rt.requestActive) reqPath.classList.add(rt.error ? "error" : "active");
-    if(selected) reqPath.classList.add("selected");
-    reqPath.setAttribute("marker-end", markerFor(rt.requestActive, rt.error, selected));
-
-    const resPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    resPath.setAttribute("d", resD);
-    resPath.classList.add("edge-line", "edge-response");
-    if(rt.responseActive) resPath.classList.add(rt.error ? "error" : "active");
-    if(selected) resPath.classList.add("selected");
-    resPath.setAttribute("marker-end", markerFor(rt.responseActive, rt.error, selected));
-
-    const reqMid = cubic(geo.request.p0, geo.request.p1, geo.request.p2, geo.request.p3, 0.5);
-    const resMid = cubic(geo.response.p0, geo.response.p1, geo.response.p2, geo.response.p3, 0.5);
-
-    const reqLabel = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    reqLabel.setAttribute("x", reqMid.x);
-    reqLabel.setAttribute("y", reqMid.y - 8);
-    reqLabel.setAttribute("fill", rt.requestActive ? (rt.error ? "#f87171" : "#4ade80") : (selected ? "#facc15" : "#94a3b8"));
-    reqLabel.classList.add("edge-label");
-    reqLabel.setAttribute("text-anchor", "middle");
-    reqLabel.textContent = "REQUEST";
-
-    const resLabel = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    resLabel.setAttribute("x", resMid.x);
-    resLabel.setAttribute("y", resMid.y + 12);
-    resLabel.setAttribute("fill", rt.responseActive ? (rt.error ? "#f87171" : "#67e8f9") : (selected ? "#facc15" : "#64748b"));
-    resLabel.classList.add("edge-label");
-    resLabel.setAttribute("text-anchor", "middle");
-    resLabel.textContent = "RESPONSE";
-
-    g.append(hitReq, hitRes, reqPath, resPath, reqLabel, resLabel);
-    svg.appendChild(g);
-  });
-  renderPackets();
-}
-
-function renderPacket(){ renderPackets(); }
-
-function renderPackets(){
-  svg.querySelectorAll(".packetGroup").forEach(x => x.remove());
-  (state.packets || []).forEach(p => {
-    const link = state.links.find(x => x.id === p.link);
-    if(!link) return;
-    const geo = linkGeometry(link.from, link.to);
-    if(!geo) return;
-    const curve = p.response ? geo.response : geo.request;
-    const t = Math.max(0, Math.min(1, p.progress));
-    const pt = cubic(curve.p0, curve.p1, curve.p2, curve.p3, t);
-    const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
-    g.classList.add("packetGroup");
-    const color = p.error ? "#f87171" : (p.response ? "#67e8f9" : "#4ade80");
-    if(p.response){
-      const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-      rect.setAttribute("x", pt.x - 6); rect.setAttribute("y", pt.y - 6);
-      rect.setAttribute("width", "12"); rect.setAttribute("height", "12");
-      rect.setAttribute("rx", "2");
-      rect.setAttribute("fill", color);
-      rect.classList.add("packet");
-      g.appendChild(rect);
-    } else {
-      const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-      circle.setAttribute("cx", pt.x); circle.setAttribute("cy", pt.y);
-      circle.setAttribute("r", "7");
-      circle.setAttribute("fill", color);
-      circle.classList.add("packet");
-      g.appendChild(circle);
+  },
+  computed: {
+    modeClass: function() {
+      return ({Ready:"", Running:"running", Paused:"paused", Complete:"complete", Error:"error"})[this.mode] || "";
+    },
+    selectedNode: function() {
+      return this.selected ? this.nodes.find(function(n){ return n.id === this.selected; }.bind(this)) : null;
+    },
+    selectedLinkObj: function() {
+      return this.selectedLink ? this.links.find(function(l){ return l.id === this.selectedLink; }.bind(this)) : null;
+    },
+    linkVisuals: function() {
+      var tick = this.geomTick;
+      var self = this;
+      return this.links.map(function(l) {
+        var geo = self.linkGeometry(l.from, l.to);
+        if (!geo) return null;
+        var rt = self.linkRuntime[l.id] || {};
+        var sel = self.selectedLink === l.id;
+        return {
+          id: l.id,
+          reqD: self.pathD(geo.request.p0, geo.request.p1, geo.request.p2, geo.request.p3),
+          resD: self.pathD(geo.response.p0, geo.response.p1, geo.response.p2, geo.response.p3),
+          reqClasses: { active: rt.requestActive && !rt.error, error: rt.requestActive && rt.error, selected: sel },
+          resClasses: { active: rt.responseActive && !rt.error, error: rt.responseActive && rt.error, selected: sel },
+          reqMarker: self.markerFor(rt.requestActive, rt.error, sel),
+          resMarker: self.markerFor(rt.responseActive, rt.error, sel),
+          reqLx: self.cubicMid(geo.request, 0.5).x,
+          reqLy: self.cubicMid(geo.request, 0.5).y - 8,
+          resLx: self.cubicMid(geo.response, 0.5).x,
+          resLy: self.cubicMid(geo.response, 0.5).y + 12,
+          reqFill: rt.requestActive ? (rt.error ? "#f87171" : "#4ade80") : (sel ? "#facc15" : "#94a3b8"),
+          resFill: rt.responseActive ? (rt.error ? "#f87171" : "#67e8f9") : (sel ? "#facc15" : "#64748b"),
+          _tick: tick
+        };
+      }).filter(Boolean);
+    },
+    packetVisuals: function() {
+      var self = this;
+      return (this.packets || []).map(function(p) {
+        var link = self.links.find(function(x){ return x.id === p.link; });
+        if (!link) return null;
+        var geo = self.linkGeometry(link.from, link.to);
+        if (!geo) return null;
+        var curve = p.response ? geo.response : geo.request;
+        var t = Math.max(0, Math.min(1, p.progress));
+        var pt = self.cubic(curve.p0, curve.p1, curve.p2, curve.p3, t);
+        var color = p.error ? "#f87171" : (p.response ? "#67e8f9" : "#4ade80");
+        return {
+          id: p.id, x: pt.x, y: pt.y, response: p.response, color: color,
+          textFill: p.error ? "#fca5a5" : (p.response ? "#a5f3fc" : "#bbf7d0"),
+          label: p.response ? "RESPONSE" : "REQUEST",
+          _tick: self.geomTick
+        };
+      }).filter(Boolean);
+    },
+    connectDragStyle: function() {
+      if (!this.connectDrag) return {};
+      return {
+        left: this.connectDrag.left + "px",
+        top: this.connectDrag.top + "px",
+        width: this.connectDrag.width + "px",
+        transform: "rotate(" + this.connectDrag.angle + "rad)"
+      };
     }
-    const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    text.setAttribute("x", pt.x); text.setAttribute("y", pt.y - 12);
-    text.setAttribute("fill", p.error ? "#fca5a5" : (p.response ? "#a5f3fc" : "#bbf7d0"));
-    text.setAttribute("font-size", "9");
-    text.setAttribute("text-anchor", "middle");
-    text.textContent = p.response ? "RESPONSE" : "REQUEST";
-    g.appendChild(text);
-    svg.appendChild(g);
-  });
-}
-
-function renderLists(){
-  const nl = document.getElementById("nodeList");
-  nl.innerHTML = "";
-  state.nodes.forEach(n => {
-    const x = document.createElement("div");
-    x.className = "item" + (state.selected === n.id ? " active" : "");
-    x.innerHTML = `<span class="dot ${dotClass(n.type)}"></span><span>${esc(n.name)}</span><span class="badge">${typeLabel(n.type)}</span>`;
-    x.onclick = () => { state.selected = n.id; state.selectedLink = null; render(); };
-    nl.appendChild(x);
-  });
-  const cl = document.getElementById("connectionList");
-  cl.innerHTML = "";
-  state.links.forEach(l => {
-    const x = document.createElement("div");
-    x.className = "item" + (state.selectedLink === l.id ? " active" : "");
-    const meta = l.type === "REST" ? `${l.type} ${l.method}` : l.type;
-    x.innerHTML =
-      `<span>${esc(meta)}</span>` +
-      `<span style="flex:1">${esc(nodeName(l.from))} → ${esc(nodeName(l.to))}</span>` +
-      `<button class="small" title="Edit communication" onclick="event.stopPropagation();editLink('${l.id}')">✎</button>` +
-      `<button class="small danger" title="Delete communication" onclick="event.stopPropagation();deleteLink('${l.id}')">×</button>`;
-    x.onclick = () => { state.selectedLink = l.id; state.selected = null; render(); };
-    cl.appendChild(x);
-  });
-}
-
-function renderInspector(){
-  const box = document.getElementById("inspector");
-  if(state.selected){
-    const n = state.nodes.get(state.selected);
-    box.innerHTML =
-      `<label class="label">Name</label><input id="inName" value="${esc(n.name)}">` +
-      `<label class="label">Type</label><select id="inType">${["service","database","external","queue"].map(x =>
-        `<option value="${x}" ${n.type===x?"selected":""}>${typeLabel(x)}</option>`).join("")}</select>` +
-      `<label class="label">Description</label><textarea id="inDesc" rows="3">${esc(n.description||"")}</textarea>` +
-      `<div class="row" style="margin-top:8px"><button class="primary" onclick="saveNode()">Save</button>` +
-      `<button class="danger" onclick="deleteNode('${n.id}')">Delete</button></div>`;
-  } else if(state.selectedLink){
-    const l = state.links.find(x => x.id === state.selectedLink);
-    if(!l){ state.selectedLink = null; return renderInspector(); }
-    const opts = [...state.nodes.entries()].map(([id,n]) => `<option value="${id}">${esc(n.name)}</option>`).join("");
-    box.innerHTML =
-      `<label class="label">From</label><select id="lf">${opts}</select>` +
-      `<label class="label">To</label><select id="lt">${opts}</select>` +
-      `<label class="label">Communication Type</label><select id="ltype" onchange="linkTypeChanged()">` +
-        ["REST","WEBHOOK","SOCKET","DATABASE"].map(x => `<option ${l.type===x?"selected":""}>${x}</option>`).join("") +
-      `</select>` +
-      `<div id="restFields">` +
-        `<div class="grid2"><div><label class="label">HTTP Method</label>` +
-        `<select id="method">${["GET","POST","PUT","PATCH","DELETE"].map(x => `<option ${l.method===x?"selected":""}>${x}</option>`).join("")}</select>` +
-        `</div><div><label class="label">Path</label><input id="path" value="${esc(l.path)}"></div></div>` +
-      `</div>` +
-      `<label class="label" id="reqLabel">Request / Query / Message</label>` +
-      `<textarea id="request" rows="6">${esc(payloadOf(l))}</textarea>` +
-      `<label class="label">Response</label><textarea id="response" rows="5">${esc(l.response)}</textarea>` +
-      `<label class="checkline"><input id="simerr" type="checkbox" ${l.simulateError?"checked":""}> Simulate Error</label>` +
-      `<label class="label">Error Type</label><select id="errtype">${ERROR_TYPES.map(x => `<option ${l.errorType===x?"selected":""}>${x}</option>`).join("")}</select>` +
-      `<label class="label">Error Message</label><input id="errmsg" value="${esc(l.errorMessage)}">` +
-      `<label class="label">Duration (ms)</label><input id="ldur" type="number" min="200" max="8000" step="50" value="${esc(l.duration||900)}">` +
-      `<div class="row" style="margin-top:8px"><button class="primary" onclick="saveLink()">Save Communication</button>` +
-      `<button class="danger" onclick="deleteLink('${l.id}')">Delete Communication</button></div>`;
-    document.getElementById("lf").value = l.from;
-    document.getElementById("lt").value = l.to;
-    linkTypeChanged();
-  } else {
-    box.innerHTML = '<div class="hint">Select a node or communication.</div>';
-  }
-}
-
-/* ---------- canvas interaction ---------- */
-
-function dragNode(e, id){
-  if(e.button !== 0) return;
-  e.preventDefault();
-  const startX = e.clientX, startY = e.clientY;
-  const p = state.positions.get(id);
-  const ox = p.x, oy = p.y;
-  let moved = false;
-  function move(v){
-    const dx = (v.clientX - startX) / state.zoom;
-    const dy = (v.clientY - startY) / state.zoom;
-    if(Math.hypot(dx, dy) > 4) moved = true;
-    if(state.connecting) return;
-    const x = ox + dx, y = oy + dy;
-    setPos(id, x, y);
-    const el = canvas.querySelector(`.node[data-id="${CSS.escape(id)}"]`);
-    if(el){ el.style.left = x + "px"; el.style.top = y + "px"; }
-    renderLinks();
-  }
-  function up(){
-    document.removeEventListener("mousemove", move);
-    document.removeEventListener("mouseup", up);
-    if(state.connecting) return;
-    if(moved){
-      document.addEventListener("click", ev => ev.stopPropagation(), {capture:true, once:true});
-    } else {
-      state.selected = id; state.selectedLink = null; render();
+  },
+  watch: {
+    selected: function(id) {
+      var n = id ? this.nodes.find(function(x){ return x.id === id; }) : null;
+      if (n) this.nodeForm = { name: n.name, type: n.type, description: n.description || "" };
+    },
+    selectedLink: function(id) {
+      var l = id ? this.links.find(function(x){ return x.id === id; }) : null;
+      if (l) this.syncLinkForm(l);
     }
-  }
-  document.addEventListener("mousemove", move);
-  document.addEventListener("mouseup", up);
-}
-
-function beginConnection(e, id){
-  if(e.button !== 0) return;
-  e.preventDefault();
-  e.stopPropagation();
-  state.connecting = {from: id, x: e.clientX, y: e.clientY};
-  const source = canvas.querySelector(`.node[data-id="${CSS.escape(id)}"]`);
-  source?.classList.add("connecting");
-
-  const line = document.createElement("div");
-  line.id = "connectionDragLine";
-  line.className = "connection-drag";
-  line.style.height = "2px";
-  line.style.background = "#60a5fa";
-  line.style.transformOrigin = "0 50%";
-  workspace.appendChild(line);
-
-  function move(v){
-    state.connecting.x = v.clientX;
-    state.connecting.y = v.clientY;
-    document.querySelectorAll(".node.connectTarget").forEach(x => x.classList.remove("connectTarget"));
-    const hovered = document.elementFromPoint(v.clientX, v.clientY)?.closest?.(".node");
-    if(hovered && hovered.dataset.id !== id) hovered.classList.add("connectTarget");
-    const r = workspace.getBoundingClientRect();
-    const src = nodeRect(id);
-    const sx = r.left + ((src ? src.cx : state.positions.get(id).x + 110) * state.zoom) + state.panX;
-    const sy = r.top + ((src ? src.cy : state.positions.get(id).y + 38) * state.zoom) + state.panY;
-    const dx = v.clientX - sx, dy = v.clientY - sy, len = Math.hypot(dx, dy);
-    line.style.left = (sx - r.left) + "px";
-    line.style.top = (sy - r.top) + "px";
-    line.style.width = len + "px";
-    line.style.transform = `rotate(${Math.atan2(dy, dx)}rad)`;
-  }
-  function up(v){
-    document.removeEventListener("mousemove", move);
-    document.removeEventListener("mouseup", up);
-    line.remove();
-    source?.classList.remove("connecting");
-    document.querySelectorAll(".node.connectTarget").forEach(x => x.classList.remove("connectTarget"));
-    const target = document.elementFromPoint(v.clientX, v.clientY)?.closest?.(".node");
-    const to = target?.dataset.id;
-    const from = id;
-    state.connecting = null;
-    if(to && to !== from){
-      if(!state.links.some(l => l.from === from && l.to === to)) addLink({from, to});
-    } else render();
-  }
-  document.addEventListener("mousemove", move);
-  document.addEventListener("mouseup", up);
-}
-
-/* ---------- logging / status ---------- */
-
-function log(text, cls){
-  state.logs.push({text, cls: cls || "", time: new Date().toLocaleTimeString()});
-  const box = document.getElementById("log");
-  box.innerHTML = state.logs.map(x =>
-    `<div class="logrow"><span class="muted">${x.time}</span><br><span class="${x.cls}">${esc(x.text)}</span></div>`
-  ).join("");
-  box.scrollTop = box.scrollHeight;
-}
-
-function setMode(mode, statusText){
-  const el = document.getElementById("mode");
-  el.textContent = mode;
-  el.className = "mode " + ({Ready:"", Running:"running", Paused:"paused", Complete:"complete", Error:"error"}[mode] || "");
-  document.getElementById("simStatus").textContent = statusText || mode;
-}
-
-function setNodeState(id, status){
-  if(!state.nodes.has(id)) return;
-  const prev = state.nodeRuntime.get(id);
-  if(status === "processing" && prev === "error") return;
-  if(status === "waiting" && prev === "error") return;
-  state.nodeRuntime.set(id, status);
-  state.packet = {node: id, error: status === "error"};
-}
-
-/* =============================================================================
-   Simulation engine
-
-   Each incoming communication is processed independently when its request
-   arrives. If A -> B and C -> B both exist, B handles A's request immediately
-   without waiting for C (and vice versa).
-
-   Per-request context:
-     1. Request arrives on link L (A -> B)
-     2. B fires ALL outgoing links in parallel for THIS request only
-     3. B waits until those downstream responses return
-     4. B sends RESPONSE on link L back to A
-
-   Parallel fan-out (A -> B and A -> C) still fires simultaneously from roots.
-   The same outgoing link (e.g. B -> DB) may run multiple times when triggered
-   by separate incoming requests at B.
-   ============================================================================= */
-
-function runFlow(){
-  if(state.running && state.paused){
-    state.paused = false;
-    setMode("Running", "Flow is executing — each request is handled independently.");
-    return;
-  }
-  if(state.running) return;
-  if(!state.links.length){
-    alert("Create at least one communication by dragging the ↗ connector from one node onto another.");
-    return;
-  }
-
-  const cycle = findCycle();
-  if(cycle){
-    state.cycleNodes = new Set(cycle);
-    const path = cycle.map(nodeName).join(" → ");
-    const msg = "Cannot run flow because the communication graph contains a cycle.";
-    setMode("Error", msg + " " + path);
-    showBanner(msg + " Cycle: " + path);
-    document.getElementById("log").innerHTML = "";
-    state.logs = [];
-    log(msg, "err");
-    log("Cycle: " + path, "err");
-    alert(msg + "\n\n" + path);
-    render();
-    return;
-  }
-
-  state.animToken++;
-  state.running = true;
-  state.paused = false;
-  state.step = 0;
-  state.hadError = false;
-  state.logs = [];
-  state.packets = [];
-  state.linkRuntime = new Map();
-  state.nodeRuntime = new Map();
-  state.contexts = new Map();
-  state.executions = new Map();
-  state.cycleNodes.clear();
-  showBanner("");
-  state.links.forEach(l => state.linkRuntime.set(l.id, {
-    requestSent:false, requestReceived:false, responseSent:false, responseReceived:false,
-    requestActive:false, responseActive:false, error:false
-  }));
-  setMode("Running", "Flow is executing — each request is handled independently.");
-  document.getElementById("log").innerHTML = "";
-  document.getElementById("timeline").value = 0;
-
-  // Roots have no incoming communications — fire all outgoing in parallel.
-  state.nodes.forEach((_, id) => {
-    if(!incomingLinks(id).length) fireRootOutgoing(id);
-  });
-  render();
-}
-
-function findCycle(){
-  const adj = new Map();
-  state.nodes.forEach((_, id) => adj.set(id, []));
-  state.links.forEach(l => adj.get(l.from)?.push(l.to));
-  const visiting = new Set(), visited = new Set(), stack = [];
-  function dfs(id){
-    if(visiting.has(id)){
-      const i = stack.indexOf(id);
-      return stack.slice(i).concat(id);
-    }
-    if(visited.has(id)) return null;
-    visiting.add(id); stack.push(id);
-    for(const to of adj.get(id) || []){ const c = dfs(to); if(c) return c; }
-    stack.pop(); visiting.delete(id); visited.add(id);
-    return null;
-  }
-  for(const id of adj.keys()){ const c = dfs(id); if(c) return c; }
-  return null;
-}
-
-function requestMeta(l){
-  if(l.type === "REST") return `REQUEST ${l.type} ${l.method} ${l.path || ""}`.trim();
-  if(l.type === "DATABASE") return "REQUEST DATABASE";
-  return "REQUEST " + l.type;
-}
-
-function getLink(linkId){ return state.links.find(l => l.id === linkId); }
-
-function patchLinkVisual(linkId, patch){
-  const rt = state.linkRuntime.get(linkId);
-  if(!rt) return;
-  Object.assign(rt, patch);
-}
-
-function fireRootOutgoing(nodeId){
-  if(!state.running) return;
-  const outs = outgoingLinks(nodeId);
-  if(!outs.length) return;
-  setNodeState(nodeId, "processing");
-  log(nodeName(nodeId) + " firing " + outs.length + " communication" + (outs.length > 1 ? "s" : "") + " in parallel", "warn");
-  outs.forEach(l => startExecution(l, null));
-}
-
-/* Start a single request leg. parentContextId=null for root fan-out. */
-function startExecution(link, parentContextId){
-  const execId = uid("exec");
-  state.executions.set(execId, {
-    id: execId,
-    linkId: link.id,
-    parentContextId,
-    requestActive: true,
-    requestReceived: false,
-    responseReceived: false,
-    error: false
-  });
-  patchLinkVisual(link.id, {requestSent: true, requestActive: true});
-  setNodeState(link.from, "processing");
-  state.packets.push({
-    id: uid("packet"), execId, link: link.id,
-    from: link.from, to: link.to,
-    progress: 0, response: false, error: false
-  });
-  log(nodeName(link.from) + " → " + nodeName(link.to) + "  " + requestMeta(link), "ok");
-  const body = payloadOf(link);
-  if(body) log(body, "muted");
-  animateExecution(execId, false, () => {
-    const exec = state.executions.get(execId);
-    exec.requestActive = false;
-    exec.requestReceived = true;
-    patchLinkVisual(link.id, {requestActive: false, requestReceived: true});
-    state.packets = state.packets.filter(p => p.execId !== execId || p.response);
-    onExecutionRequestArrived(execId);
-  });
-  return execId;
-}
-
-function onExecutionRequestArrived(execId){
-  if(!state.running) return;
-  const exec = state.executions.get(execId);
-  const link = getLink(exec.linkId);
-  if(!link) return;
-  beginContext(link, execId);
-  render();
-}
-
-/* Process one incoming request immediately — do not wait for other incoming links. */
-function beginContext(incomingLink, sourceExecId){
-  const ctxId = uid("ctx");
-  const ctx = {
-    id: ctxId,
-    incomingLinkId: incomingLink.id,
-    sourceExecId,
-    pendingExecs: new Set(),
-    error: false,
-    responded: false
-  };
-  state.contexts.set(ctxId, ctx);
-  const nodeId = incomingLink.to;
-
-  if(incomingLink.simulateError){
-    ctx.error = true;
-    state.hadError = true;
-    setNodeState(nodeId, "error");
-    log(nodeName(nodeId) + " ERROR: " + incomingLink.errorType, "err");
-    log(incomingLink.errorMessage || "Request failed.", "err");
-    startContextResponse(ctxId, true);
-    return;
-  }
-
-  setNodeState(nodeId, "processing");
-  log(nodeName(nodeId) + " received REQUEST from " + nodeName(incomingLink.from), "ok");
-  if(incomingLink.type === "DATABASE"){
-    const q = payloadOf(incomingLink);
-    if(q) log("Query:\n" + q, "muted");
-  }
-
-  const outs = outgoingLinks(nodeId);
-  if(!outs.length){
-    startContextResponse(ctxId, false);
-    return;
-  }
-
-  setNodeState(nodeId, "waiting");
-  log(nodeName(nodeId) + " firing " + outs.length + " downstream communication" + (outs.length > 1 ? "s" : "") + " in parallel", "warn");
-  outs.forEach(out => {
-    const childExecId = startExecution(out, ctxId);
-    if(childExecId) ctx.pendingExecs.add(childExecId);
-  });
-  if(!ctx.pendingExecs.size){
-    startContextResponse(ctxId, false);
-  }
-}
-
-function startContextResponse(ctxId, error){
-  const ctx = state.contexts.get(ctxId);
-  if(!ctx || ctx.responded) return;
-  ctx.responded = true;
-  if(error) ctx.error = true;
-  const link = getLink(ctx.incomingLinkId);
-  if(!link) return;
-  patchLinkVisual(link.id, {responseSent: true, responseActive: true, error: !!error});
-  setNodeState(link.to, error ? "error" : "processing");
-  log(nodeName(link.to) + " → " + nodeName(link.from) + "  RESPONSE " + (error ? "ERROR" : "OK"), error ? "err" : "ok");
-  if(!error && link.response) log(link.response, "muted");
-  state.packets.push({
-    id: uid("packet"), execId: ctx.sourceExecId, link: link.id,
-    from: link.to, to: link.from,
-    progress: 0, response: true, error: !!error
-  });
-  animateExecution(ctx.sourceExecId, true, () => {
-    patchLinkVisual(link.id, {responseActive: false, responseReceived: true});
-    state.packets = state.packets.filter(p => !(p.execId === ctx.sourceExecId && p.response));
-    completeExecution(ctx.sourceExecId, error);
-    updateTimeline();
-    checkFinish();
-    render();
-  });
-}
-
-function completeExecution(execId, error){
-  const exec = state.executions.get(execId);
-  if(!exec || exec.responseReceived) return;
-  exec.responseReceived = true;
-  if(error) exec.error = true;
-  const link = getLink(exec.linkId);
-  if(link){
-    setNodeState(link.from, error ? "error" : "processing");
-    log(nodeName(link.from) + " received " + (error ? "ERROR response" : "RESPONSE"), error ? "err" : "ok");
-    if(!exec.parentContextId && outgoingLinks(link.from).some(l => {
-      const e = [...state.executions.values()].find(x => x.linkId === l.id && !x.responseReceived);
-      return !!e;
-    })){
-      setNodeState(link.from, "waiting");
-    }
-  }
-  if(exec.parentContextId){
-    const parent = state.contexts.get(exec.parentContextId);
-    if(parent){
-      if(error) parent.error = true;
-      parent.pendingExecs.delete(execId);
-      if(parent.pendingExecs.size === 0 && !parent.responded){
-        startContextResponse(parent.id, parent.error);
+  },
+  mounted: function() {
+    this.$nextTick(function(){ this.scrollLog(); }.bind(this));
+  },
+  methods: {
+    uid: function(prefix) { return prefix + "_" + Math.random().toString(36).slice(2, 8); },
+    typeLabel: function(t) { return ({service:"SERVICE",database:"DATABASE",external:"EXTERNAL API",queue:"QUEUE"})[t] || t; },
+    dotClass: function(t) { return t === "database" ? "db" : t === "external" ? "external" : t === "queue" ? "queue" : ""; },
+    nodeName: function(id) { var n = this.nodes.find(function(x){ return x.id === id; }); return n ? n.name : "(deleted)"; },
+    linkMeta: function(l) { return l.type === "REST" ? l.type + " " + l.method : l.type; },
+    payloadOf: function(l) { return l.type === "DATABASE" ? (l.query || l.request || "") : (l.request || l.query || ""); },
+    incomingLinks: function(id) { return this.links.filter(function(l){ return l.to === id; }); },
+    outgoingLinks: function(id) { return this.links.filter(function(l){ return l.from === id; }); },
+    bumpGeom: function() { this.geomTick++; },
+    selectNode: function(id) { this.selected = id; this.selectedLink = null; },
+    selectLink: function(id) {
+      this.selectedLink = id;
+      this.selected = null;
+      this.$nextTick(function() {
+        var el = this.$refs.inspector;
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }.bind(this));
+    },
+    nodeClasses: function(n) {
+      return {
+        selected: this.selected === n.id,
+        active: this.nodeRuntime[n.id] === "processing",
+        waiting: this.nodeRuntime[n.id] === "waiting",
+        error: this.nodeRuntime[n.id] === "error",
+        cycle: this.cycleNodes.indexOf(n.id) >= 0,
+        connecting: this.connecting && this.connecting.from === n.id,
+        connectTarget: this.connecting && this.connecting.target === n.id
+      };
+    },
+    nodeStatus: function(id) {
+      var s = this.nodeRuntime[id];
+      if (s === "processing") return "Processing";
+      if (s === "waiting") return "Waiting for dependency";
+      if (s === "error") return "Error";
+      if (this.cycleNodes.indexOf(id) >= 0) return "Cycle";
+      return "";
+    },
+    syncLinkForm: function(l) {
+      this.linkForm = {
+        from: l.from, to: l.to, type: l.type, method: l.method || "POST",
+        path: l.path || "", payload: this.payloadOf(l), response: l.response || "",
+        simulateError: !!l.simulateError, errorType: l.errorType || "Invalid payload",
+        errorMessage: l.errorMessage || "", duration: l.duration || 900
+      };
+    },
+    defaultLinkData: function(from, to) {
+      var toNode = this.nodes.find(function(n){ return n.id === to; });
+      var isDb = toNode && toNode.type === "database";
+      return {
+        id: this.uid("link"), from: from, to: to,
+        type: isDb ? "DATABASE" : "REST", method: isDb ? "QUERY" : "POST",
+        path: isDb ? "" : "/api/example",
+        request: isDb ? "" : '{\n  "id": 123\n}',
+        query: isDb ? "SELECT *\nFROM users\nWHERE id = 123;" : "",
+        response: isDb ? '{\n  "id": 123,\n  "name": "Reno"\n}' : '{\n  "success": true\n}',
+        simulateError: false, errorType: "Invalid payload",
+        errorMessage: "Payload validation failed.", duration: 900
+      };
+    },
+    addNode: function(type) {
+      var id = this.uid(type);
+      var count = this.nodes.filter(function(n){ return n.type === type; }).length + 1;
+      var names = {service:"Service",database:"Database",external:"External API",queue:"Message Queue"};
+      var name = type === "service" ? "Service " + count : (count > 1 ? names[type] + " " + count : names[type]);
+      this.nodes.push({
+        id: id, name: name, type: type, description: "",
+        x: 120 + (this.nodes.length % 3) * 320,
+        y: 120 + Math.floor(this.nodes.length / 3) * 220
+      });
+      this.selected = id;
+      this.selectedLink = null;
+      this.cycleNodes = [];
+      this.bannerText = "";
+      this.bumpGeom();
+    },
+    deleteNode: function(id) {
+      if (this.running) this.resetFlow();
+      this.links = this.links.filter(function(l){ return l.from !== id && l.to !== id; });
+      this.nodes = this.nodes.filter(function(n){ return n.id !== id; });
+      this.$delete(this.nodeRuntime, id);
+      if (this.selected === id) this.selected = null;
+      this.cycleNodes = this.cycleNodes.filter(function(x){ return x !== id; });
+      this.bumpGeom();
+    },
+    saveNode: function() {
+      var n = this.selectedNode;
+      if (!n) return;
+      n.name = this.nodeForm.name.trim() || "Unnamed";
+      n.type = this.nodeForm.type;
+      n.description = this.nodeForm.description;
+      this.bumpGeom();
+    },
+    addLink: function(data) {
+      var l = Object.assign(this.defaultLinkData(data && data.from || "", data && data.to || ""), data || {});
+      this.links.push(l);
+      this.selectedLink = l.id;
+      this.selected = null;
+      this.cycleNodes = [];
+      this.bannerText = "";
+      this.bumpGeom();
+    },
+    deleteLink: function(id) {
+      if (this.running) this.resetFlow();
+      this.links = this.links.filter(function(x){ return x.id !== id; });
+      this.$delete(this.linkRuntime, id);
+      if (this.selectedLink === id) this.selectedLink = null;
+      this.packets = this.packets.filter(function(p){ return p.link !== id; });
+      this.bumpGeom();
+    },
+    saveLink: function() {
+      var l = this.selectedLinkObj;
+      if (!l) { this.selectedLink = null; return; }
+      if (this.linkForm.from === this.linkForm.to) { alert("A communication cannot point to the same node."); return; }
+      l.from = this.linkForm.from;
+      l.to = this.linkForm.to;
+      l.type = this.linkForm.type;
+      l.method = this.linkForm.method;
+      l.path = this.linkForm.path;
+      if (l.type === "DATABASE") l.query = this.linkForm.payload; else l.request = this.linkForm.payload;
+      l.response = this.linkForm.response;
+      l.simulateError = this.linkForm.simulateError;
+      l.errorType = this.linkForm.errorType;
+      l.errorMessage = this.linkForm.errorMessage;
+      if (Number.isFinite(this.linkForm.duration) && this.linkForm.duration >= 200) l.duration = this.linkForm.duration;
+      this.cycleNodes = [];
+      this.bannerText = "";
+      this.bumpGeom();
+    },
+    getNodeEl: function(id) {
+      var ref = this.$refs["node-" + id];
+      return Array.isArray(ref) ? ref[0] : ref;
+    },
+    nodeRect: function(id) {
+      var el = this.getNodeEl(id);
+      var n = this.nodes.find(function(x){ return x.id === id; });
+      if (!n) return null;
+      return { x: n.x, y: n.y, w: el ? el.offsetWidth : 220, h: el ? el.offsetHeight : 76, cx: n.x + (el ? el.offsetWidth : 220) / 2, cy: n.y + (el ? el.offsetHeight : 76) / 2 };
+    },
+    pickSides: function(a, b) {
+      var dx = b.cx - a.cx, dy = b.cy - a.cy;
+      if (Math.abs(dx) >= Math.abs(dy)) return dx >= 0 ? ["right","left"] : ["left","right"];
+      return dy >= 0 ? ["bottom","top"] : ["top","bottom"];
+    },
+    anchor: function(rect, side, lane) {
+      var spread = 11;
+      if (side === "right") return { x: rect.x + rect.w, y: rect.cy + lane * spread, side: side };
+      if (side === "left") return { x: rect.x, y: rect.cy + lane * spread, side: side };
+      if (side === "bottom") return { x: rect.cx + lane * spread, y: rect.y + rect.h, side: side };
+      return { x: rect.cx + lane * spread, y: rect.y, side: side };
+    },
+    ctrl: function(pt, dist) {
+      if (pt.side === "right") return { x: pt.x + dist, y: pt.y };
+      if (pt.side === "left") return { x: pt.x - dist, y: pt.y };
+      if (pt.side === "bottom") return { x: pt.x, y: pt.y + dist };
+      return { x: pt.x, y: pt.y - dist };
+    },
+    cubic: function(a, b, c, d, t) {
+      var u = 1 - t;
+      return {
+        x: u*u*u*a.x + 3*u*u*t*b.x + 3*u*t*t*c.x + t*t*t*d.x,
+        y: u*u*u*a.y + 3*u*u*t*b.y + 3*u*t*t*c.y + t*t*t*d.y
+      };
+    },
+    cubicMid: function(curve, t) { return this.cubic(curve.p0, curve.p1, curve.p2, curve.p3, t); },
+    pathD: function(p0, p1, p2, p3) {
+      return "M " + p0.x + " " + p0.y + " C " + p1.x + " " + p1.y + ", " + p2.x + " " + p2.y + ", " + p3.x + " " + p3.y;
+    },
+    linkGeometry: function(fromId, toId) {
+      var a = this.nodeRect(fromId), b = this.nodeRect(toId);
+      if (!a || !b) return null;
+      var sides = this.pickSides(a, b);
+      var dist = Math.max(70, Math.hypot(b.cx - a.cx, b.cy - a.cy) * 0.38);
+      var req0 = this.anchor(a, sides[0], -1);
+      var req3 = this.anchor(b, sides[1], -1);
+      var res0 = this.anchor(b, sides[1], 1);
+      var res3 = this.anchor(a, sides[0], 1);
+      return {
+        request: { p0: req0, p1: this.ctrl(req0, dist), p2: this.ctrl(req3, dist), p3: req3 },
+        response: { p0: res0, p1: this.ctrl(res0, dist), p2: this.ctrl(res3, dist), p3: res3 }
+      };
+    },
+    markerFor: function(active, error, selected) {
+      if (error && active) return "url(#arrowError)";
+      if (active) return "url(#arrowActive)";
+      if (selected) return "url(#arrowSelected)";
+      return "url(#arrow)";
+    },
+    onNodeMouseDown: function(e, id) {
+      if (e.button !== 0) return;
+      if (e.target.closest && e.target.closest(".connector")) return;
+      e.preventDefault();
+      var n = this.nodes.find(function(x){ return x.id === id; });
+      if (!n) return;
+      var startX = e.clientX, startY = e.clientY, ox = n.x, oy = n.y, moved = false, self = this;
+      function move(v) {
+        var dx = (v.clientX - startX) / self.vpZoom;
+        var dy = (v.clientY - startY) / self.vpZoom;
+        if (Math.hypot(dx, dy) > 4) moved = true;
+        if (self.connecting) return;
+        n.x = ox + dx;
+        n.y = oy + dy;
+        self.bumpGeom();
       }
-    }
-  }
-}
-
-/* ---------- packet animation ---------- */
-
-function animateExecution(execId, response, done){
-  const exec = state.executions.get(execId);
-  if(!exec) return;
-  const link = getLink(exec.linkId);
-  if(!link) return;
-  const token = state.animToken;
-  const duration = link.duration || 900;
-  const packet = state.packets.find(p => p.execId === execId && p.response === response);
-  let start = performance.now();
-  let pauseAccum = 0;
-  let pausedAt = 0;
-  function frame(now){
-    if(token !== state.animToken || !state.running) return;
-    if(state.paused){
-      if(!pausedAt) pausedAt = now;
+      function up() {
+        document.removeEventListener("mousemove", move);
+        document.removeEventListener("mouseup", up);
+        if (self.connecting) return;
+        if (!moved) { self.selectNode(id); }
+      }
+      document.addEventListener("mousemove", move);
+      document.addEventListener("mouseup", up);
+    },
+    beginConnection: function(e, id) {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      e.stopPropagation();
+      var self = this;
+      this.connecting = { from: id, target: null };
+      function move(v) {
+        self.connecting.x = v.clientX;
+        self.connecting.y = v.clientY;
+        var hovered = document.elementFromPoint(v.clientX, v.clientY);
+        var node = hovered && hovered.closest ? hovered.closest(".node") : null;
+        self.connecting.target = node && node.dataset.id !== id ? node.dataset.id : null;
+        var r = self.$refs.viewport.getBoundingClientRect();
+        var src = self.nodeRect(id);
+        var sx = r.left + (src ? src.cx : 0) * self.vpZoom + self.vpPanX;
+        var sy = r.top + (src ? src.cy : 0) * self.vpZoom + self.vpPanY;
+        var dx = v.clientX - sx, dy = v.clientY - sy, len = Math.hypot(dx, dy);
+        self.connectDrag = { left: sx - r.left, top: sy - r.top, width: len, angle: Math.atan2(dy, dx) };
+      }
+      function up(v) {
+        document.removeEventListener("mousemove", move);
+        document.removeEventListener("mouseup", up);
+        self.connectDrag = null;
+        var target = document.elementFromPoint(v.clientX, v.clientY);
+        var node = target && target.closest ? target.closest(".node") : null;
+        var to = node ? node.dataset.id : null;
+        var from = id;
+        self.connecting = null;
+        if (to && to !== from && !self.links.some(function(l){ return l.from === from && l.to === to; })) {
+          self.addLink({ from: from, to: to });
+        }
+      }
+      document.addEventListener("mousemove", move);
+      document.addEventListener("mouseup", up);
+    },
+    vpShouldIgnorePan: function(e) {
+      return !!(e.target.closest && (e.target.closest(".edge-hit") || e.target.closest(".node")));
+    },
+    onWorkspaceMouseDown: function(e) {
+      if (e.button === 1 || this.vpSpace) return;
+      if (e.target.closest && (e.target.closest(".edge-hit") || e.target.closest(".node"))) return;
+      if (e.target === this.$refs.viewport || e.target === this.$refs.canvas || e.target === this.$refs.svg || (e.target.closest && e.target.closest(".notice"))) {
+        this.selected = null;
+        this.selectedLink = null;
+      }
+    },
+    fitAll: function() {
+      if (!this.nodes.length) return;
+      var xs = this.nodes.map(function(n){ return n.x; });
+      var ys = this.nodes.map(function(n){ return n.y; });
+      this.vpFit({
+        minX: Math.min.apply(null, xs) - 40,
+        minY: Math.min.apply(null, ys) - 40,
+        maxX: Math.max.apply(null, xs) + 260,
+        maxY: Math.max.apply(null, ys) + 170
+      });
+    },
+    log: function(text, cls) {
+      this.logs.push({ text: text, cls: cls || "", time: new Date().toLocaleTimeString() });
+      this.scrollLog();
+    },
+    scrollLog: function() {
+      var self = this;
+      this.$nextTick(function() {
+        var box = self.$refs.log;
+        if (box) box.scrollTop = box.scrollHeight;
+      });
+    },
+    setMode: function(mode, statusText) {
+      this.mode = mode;
+      this.simStatus = statusText || mode;
+    },
+    setNodeState: function(id, status) {
+      if (!this.nodes.some(function(n){ return n.id === id; })) return;
+      var prev = this.nodeRuntime[id];
+      if (status === "processing" && prev === "error") return;
+      if (status === "waiting" && prev === "error") return;
+      this.$set(this.nodeRuntime, id, status);
+    },
+    patchLinkVisual: function(linkId, patch) {
+      var rt = this.linkRuntime[linkId] || {};
+      this.$set(this.linkRuntime, linkId, Object.assign({}, rt, patch));
+    },
+    getLink: function(linkId) { return this.links.find(function(l){ return l.id === linkId; }); },
+    findCycle: function() {
+      var adj = {};
+      this.nodes.forEach(function(n){ adj[n.id] = []; });
+      this.links.forEach(function(l){ if (adj[l.from]) adj[l.from].push(l.to); });
+      var visiting = {}, visited = {}, stack = [], self = this;
+      function dfs(id) {
+        if (visiting[id]) {
+          var i = stack.indexOf(id);
+          return stack.slice(i).concat(id);
+        }
+        if (visited[id]) return null;
+        visiting[id] = true; stack.push(id);
+        for (var j = 0; j < (adj[id] || []).length; j++) {
+          var c = dfs(adj[id][j]);
+          if (c) return c;
+        }
+        stack.pop(); delete visiting[id]; visited[id] = true;
+        return null;
+      }
+      for (var k = 0; k < self.nodes.length; k++) {
+        var c = dfs(self.nodes[k].id);
+        if (c) return c;
+      }
+      return null;
+    },
+    requestMeta: function(l) {
+      if (l.type === "REST") return "REQUEST " + l.type + " " + l.method + " " + (l.path || "");
+      if (l.type === "DATABASE") return "REQUEST DATABASE";
+      return "REQUEST " + l.type;
+    },
+    runFlow: function() {
+      if (this.running && this.paused) {
+        this.paused = false;
+        this.setMode("Running", "Flow is executing — each request is handled independently.");
+        return;
+      }
+      if (this.running) return;
+      if (!this.links.length) {
+        alert("Create at least one communication by dragging the ↗ connector from one node onto another.");
+        return;
+      }
+      var cycle = this.findCycle();
+      if (cycle) {
+        this.cycleNodes = cycle;
+        var path = cycle.map(this.nodeName.bind(this)).join(" → ");
+        var msg = "Cannot run flow because the communication graph contains a cycle.";
+        this.setMode("Error", msg + " " + path);
+        this.bannerText = msg + " Cycle: " + path;
+        this.logs = [];
+        this.log(msg, "err");
+        this.log("Cycle: " + path, "err");
+        alert(msg + "\n\n" + path);
+        return;
+      }
+      this.animToken++;
+      this.running = true;
+      this.paused = false;
+      this.hadError = false;
+      this.logs = [];
+      this.packets = [];
+      this.linkRuntime = {};
+      this.nodeRuntime = {};
+      this.contexts = {};
+      this.executions = {};
+      this.cycleNodes = [];
+      this.bannerText = "";
+      var self = this;
+      this.links.forEach(function(l) {
+        self.$set(self.linkRuntime, l.id, {
+          requestSent: false, requestReceived: false, responseSent: false, responseReceived: false,
+          requestActive: false, responseActive: false, error: false
+        });
+      });
+      this.setMode("Running", "Flow is executing — each request is handled independently.");
+      this.timeline = 0;
+      this.nodes.forEach(function(n) {
+        if (!self.incomingLinks(n.id).length) self.fireRootOutgoing(n.id);
+      });
+      this.bumpGeom();
+    },
+    fireRootOutgoing: function(nodeId) {
+      if (!this.running) return;
+      var outs = this.outgoingLinks(nodeId);
+      if (!outs.length) return;
+      this.setNodeState(nodeId, "processing");
+      this.log(this.nodeName(nodeId) + " firing " + outs.length + " communication" + (outs.length > 1 ? "s" : "") + " in parallel", "warn");
+      var self = this;
+      outs.forEach(function(l){ self.startExecution(l, null); });
+    },
+    startExecution: function(link, parentContextId) {
+      var execId = this.uid("exec");
+      var self = this;
+      this.$set(this.executions, execId, {
+        id: execId, linkId: link.id, parentContextId: parentContextId,
+        requestActive: true, requestReceived: false, responseReceived: false, error: false
+      });
+      this.patchLinkVisual(link.id, { requestSent: true, requestActive: true });
+      this.setNodeState(link.from, "processing");
+      this.packets.push({
+        id: this.uid("packet"), execId: execId, link: link.id,
+        from: link.from, to: link.to, progress: 0, response: false, error: false
+      });
+      this.log(this.nodeName(link.from) + " → " + this.nodeName(link.to) + "  " + this.requestMeta(link), "ok");
+      var body = this.payloadOf(link);
+      if (body) this.log(body, "muted");
+      this.animateExecution(execId, false, function() {
+        var exec = self.executions[execId];
+        exec.requestActive = false;
+        exec.requestReceived = true;
+        self.patchLinkVisual(link.id, { requestActive: false, requestReceived: true });
+        self.packets = self.packets.filter(function(p){ return p.execId !== execId || p.response; });
+        self.onExecutionRequestArrived(execId);
+      });
+      return execId;
+    },
+    onExecutionRequestArrived: function(execId) {
+      if (!this.running) return;
+      var exec = this.executions[execId];
+      var link = this.getLink(exec.linkId);
+      if (!link) return;
+      this.beginContext(link, execId);
+      this.bumpGeom();
+    },
+    beginContext: function(incomingLink, sourceExecId) {
+      var ctxId = this.uid("ctx");
+      var self = this;
+      this.$set(this.contexts, ctxId, {
+        id: ctxId, incomingLinkId: incomingLink.id, sourceExecId: sourceExecId,
+        pendingExecs: [], error: false, responded: false
+      });
+      var ctx = this.contexts[ctxId];
+      var nodeId = incomingLink.to;
+      if (incomingLink.simulateError) {
+        ctx.error = true;
+        this.hadError = true;
+        this.setNodeState(nodeId, "error");
+        this.log(this.nodeName(nodeId) + " ERROR: " + incomingLink.errorType, "err");
+        this.log(incomingLink.errorMessage || "Request failed.", "err");
+        this.startContextResponse(ctxId, true);
+        return;
+      }
+      this.setNodeState(nodeId, "processing");
+      this.log(this.nodeName(nodeId) + " received REQUEST from " + this.nodeName(incomingLink.from), "ok");
+      if (incomingLink.type === "DATABASE") {
+        var q = this.payloadOf(incomingLink);
+        if (q) this.log("Query:\n" + q, "muted");
+      }
+      var outs = this.outgoingLinks(nodeId);
+      if (!outs.length) { this.startContextResponse(ctxId, false); return; }
+      this.setNodeState(nodeId, "waiting");
+      this.log(this.nodeName(nodeId) + " firing " + outs.length + " downstream communication" + (outs.length > 1 ? "s" : "") + " in parallel", "warn");
+      outs.forEach(function(out) {
+        var childExecId = self.startExecution(out, ctxId);
+        if (childExecId) ctx.pendingExecs.push(childExecId);
+      });
+      if (!ctx.pendingExecs.length) this.startContextResponse(ctxId, false);
+    },
+    startContextResponse: function(ctxId, error) {
+      var ctx = this.contexts[ctxId];
+      if (!ctx || ctx.responded) return;
+      ctx.responded = true;
+      if (error) ctx.error = true;
+      var link = this.getLink(ctx.incomingLinkId);
+      if (!link) return;
+      var self = this;
+      this.patchLinkVisual(link.id, { responseSent: true, responseActive: true, error: !!error });
+      this.setNodeState(link.to, error ? "error" : "processing");
+      this.log(this.nodeName(link.to) + " → " + this.nodeName(link.from) + "  RESPONSE " + (error ? "ERROR" : "OK"), error ? "err" : "ok");
+      if (!error && link.response) this.log(link.response, "muted");
+      this.packets.push({
+        id: this.uid("packet"), execId: ctx.sourceExecId, link: link.id,
+        from: link.to, to: link.from, progress: 0, response: true, error: !!error
+      });
+      this.animateExecution(ctx.sourceExecId, true, function() {
+        self.patchLinkVisual(link.id, { responseActive: false, responseReceived: true });
+        self.packets = self.packets.filter(function(p){ return !(p.execId === ctx.sourceExecId && p.response); });
+        self.completeExecution(ctx.sourceExecId, error);
+        self.updateTimeline();
+        self.checkFinish();
+        self.bumpGeom();
+      });
+    },
+    completeExecution: function(execId, error) {
+      var exec = this.executions[execId];
+      if (!exec || exec.responseReceived) return;
+      exec.responseReceived = true;
+      if (error) exec.error = true;
+      var link = this.getLink(exec.linkId);
+      var self = this;
+      if (link) {
+        this.setNodeState(link.from, error ? "error" : "processing");
+        this.log(this.nodeName(link.from) + " received " + (error ? "ERROR response" : "RESPONSE"), error ? "err" : "ok");
+        if (!exec.parentContextId && this.outgoingLinks(link.from).some(function(l) {
+          return Object.keys(self.executions).some(function(eid) {
+            var e = self.executions[eid];
+            return e.linkId === l.id && !e.responseReceived;
+          });
+        })) {
+          this.setNodeState(link.from, "waiting");
+        }
+      }
+      if (exec.parentContextId) {
+        var parent = this.contexts[exec.parentContextId];
+        if (parent) {
+          if (error) parent.error = true;
+          parent.pendingExecs = parent.pendingExecs.filter(function(id){ return id !== execId; });
+          if (!parent.pendingExecs.length && !parent.responded) {
+            this.startContextResponse(parent.id, parent.error);
+          }
+        }
+      }
+    },
+    animateExecution: function(execId, response, done) {
+      var exec = this.executions[execId];
+      if (!exec) return;
+      var link = this.getLink(exec.linkId);
+      if (!link) return;
+      var token = this.animToken;
+      var duration = link.duration || 900;
+      var self = this;
+      var packet = this.packets.find(function(p){ return p.execId === execId && p.response === response; });
+      var start = performance.now(), pauseAccum = 0, pausedAt = 0;
+      function frame(now) {
+        if (token !== self.animToken || !self.running) return;
+        if (self.paused) {
+          if (!pausedAt) pausedAt = now;
+          requestAnimationFrame(frame);
+          return;
+        }
+        if (pausedAt) { pauseAccum += now - pausedAt; pausedAt = 0; }
+        var elapsed = now - start - pauseAccum;
+        if (packet) packet.progress = Math.min(1, elapsed / duration);
+        self.bumpGeom();
+        if (!packet || elapsed >= duration) {
+          if (packet) packet.progress = 1;
+          done();
+        } else {
+          requestAnimationFrame(frame);
+        }
+      }
       requestAnimationFrame(frame);
-      return;
+    },
+    updateTimeline: function() {
+      var execs = Object.keys(this.executions).map(function(k){ return this.executions[k]; }.bind(this));
+      var total = Math.max(1, execs.length);
+      var done = execs.filter(function(e){ return e.responseReceived; }).length;
+      this.timeline = Math.round(done / total * 100);
+    },
+    checkFinish: function() {
+      if (!this.running) return;
+      var self = this;
+      var execs = Object.keys(this.executions).map(function(k){ return self.executions[k]; });
+      if (execs.length && execs.every(function(e){ return e.responseReceived; })) {
+        setTimeout(function() {
+          if (self.running && Object.keys(self.executions).every(function(k){ return self.executions[k].responseReceived; })) {
+            self.finishFlow();
+          }
+        }, 280);
+      }
+    },
+    pauseFlow: function() {
+      if (!this.running) return;
+      this.paused = !this.paused;
+      this.setMode(this.paused ? "Paused" : "Running",
+        this.paused ? "Simulation paused." : "Flow is executing — each request is handled independently.");
+    },
+    resetFlow: function() {
+      this.animToken++;
+      this.running = false;
+      this.paused = false;
+      this.packets = [];
+      this.linkRuntime = {};
+      this.nodeRuntime = {};
+      this.contexts = {};
+      this.executions = {};
+      this.cycleNodes = [];
+      this.hadError = false;
+      this.logs = [];
+      this.bannerText = "";
+      this.setMode("Ready", "Ready.");
+      this.timeline = 0;
+      this.bumpGeom();
+    },
+    finishFlow: function() {
+      this.running = false;
+      this.paused = false;
+      this.packets = [];
+      this.updateTimeline();
+      this.setMode(this.hadError ? "Error" : "Complete",
+        this.hadError ? "Flow finished with errors. Dependency order was still respected." : "Flow completed — all request/response cycles finished.");
+      this.bumpGeom();
+    },
+    seekFlow: function(v) {
+      if (this.running) return;
+      this.simStatus = "Timeline position: " + v + "%";
     }
-    if(pausedAt){
-      pauseAccum += now - pausedAt;
-      pausedAt = 0;
-    }
-    const elapsed = now - start - pauseAccum;
-    if(packet) packet.progress = Math.min(1, elapsed / duration);
-    renderLinks();
-    if(!packet || elapsed >= duration){
-      if(packet) packet.progress = 1;
-      done();
-    } else {
-      requestAnimationFrame(frame);
-    }
-  }
-  requestAnimationFrame(frame);
-}
-
-function updateTimeline(){
-  const execs = [...state.executions.values()];
-  const total = Math.max(1, execs.length);
-  const done = execs.filter(e => e.responseReceived).length;
-  document.getElementById("timeline").value = Math.round(done / total * 100);
-}
-
-function checkFinish(){
-  if(!state.running) return;
-  const execs = [...state.executions.values()];
-  if(execs.length && execs.every(e => e.responseReceived)){
-    setTimeout(() => {
-      if(state.running && [...state.executions.values()].every(e => e.responseReceived)) finishFlow();
-    }, 280);
-  }
-}
-
-function pauseFlow(){
-  if(!state.running) return;
-  state.paused = !state.paused;
-  setMode(state.paused ? "Paused" : "Running",
-    state.paused ? "Simulation paused." : "Flow is executing — each request is handled independently.");
-}
-
-function resetFlow(){
-  state.animToken++;
-  state.running = false;
-  state.paused = false;
-  state.step = 0;
-  state.packet = null;
-  state.packets = [];
-  state.linkRuntime = new Map();
-  state.nodeRuntime = new Map();
-  state.contexts = new Map();
-  state.executions = new Map();
-  state.cycleNodes.clear();
-  state.hadError = false;
-  state.logs = [];
-  showBanner("");
-  setMode("Ready", "Ready.");
-  document.getElementById("timeline").value = 0;
-  document.getElementById("log").innerHTML = '<span class="muted">No execution yet.</span>';
-  render();
-}
-
-function finishFlow(){
-  state.running = false;
-  state.paused = false;
-  state.packets = [];
-  updateTimeline();
-  if(state.hadError){
-    setMode("Error", "Flow finished with errors. Dependency order was still respected.");
-  } else {
-    setMode("Complete", "Flow completed — all request/response cycles finished.");
-  }
-  render();
-}
-
-function seekFlow(v){
-  if(state.running) return;
-  document.getElementById("simStatus").textContent = "Timeline position: " + v + "%";
-}
-
-/* ---------- zoom / pan ---------- */
-
-function updateTransform(){
-  const t = `translate(${state.panX}px,${state.panY}px) scale(${state.zoom})`;
-  canvas.style.transform = t;
-  svg.style.transform = t;
-  document.getElementById("zoomLabel").textContent = Math.round(state.zoom * 100) + "%";
-}
-
-function changeZoom(d, event){
-  const old = state.zoom;
-  state.zoom = Math.max(0.25, Math.min(2.5, +(old + d).toFixed(2)));
-  if(event){
-    const r = workspace.getBoundingClientRect();
-    const mx = event.clientX - r.left;
-    const my = event.clientY - r.top;
-    const k = state.zoom / old;
-    state.panX = mx - (mx - state.panX) * k;
-    state.panY = my - (my - state.panY) * k;
-  }
-  updateTransform();
-}
-
-function fitAll(){
-  if(!state.nodes.size) return;
-  const ps = [...state.positions.values()];
-  const minX = Math.min(...ps.map(p => p.x)) - 40;
-  const minY = Math.min(...ps.map(p => p.y)) - 40;
-  const maxX = Math.max(...ps.map(p => p.x)) + 260;
-  const maxY = Math.max(...ps.map(p => p.y)) + 170;
-  const w = Math.max(1, maxX - minX);
-  const h = Math.max(1, maxY - minY);
-  state.zoom = Math.max(0.25, Math.min(1.2, (workspace.clientWidth - 80) / w, (workspace.clientHeight - 80) / h));
-  state.panX = (workspace.clientWidth - w * state.zoom) / 2 - minX * state.zoom;
-  state.panY = (workspace.clientHeight - h * state.zoom) / 2 - minY * state.zoom;
-  updateTransform();
-}
-
-workspace.addEventListener("wheel", e => {
-  e.preventDefault();
-  changeZoom(e.deltaY < 0 ? 0.1 : -0.1, e);
-}, {passive:false});
-
-let space = false;
-document.addEventListener("keydown", e => {
-  if(e.code === "Space" && document.activeElement.tagName !== "INPUT" && document.activeElement.tagName !== "TEXTAREA"){
-    space = true; e.preventDefault();
   }
 });
-document.addEventListener("keyup", e => { if(e.code === "Space") space = false; });
-
-workspace.addEventListener("mousedown", e => {
-  if(e.button === 1 || space){
-    const sx = e.clientX, sy = e.clientY, px = state.panX, py = state.panY;
-    function mv(v){ state.panX = px + v.clientX - sx; state.panY = py + v.clientY - sy; updateTransform(); }
-    function up(){ removeEventListener("mousemove", mv); removeEventListener("mouseup", up); }
-    addEventListener("mousemove", mv); addEventListener("mouseup", up);
-    return;
-  }
-  if(e.target.closest?.(".edge-hit") || e.target.closest?.(".node")) return;
-  if(e.target === workspace || e.target === canvas || e.target === svg || e.target.closest?.(".notice")){
-    state.selected = null; state.selectedLink = null; render();
-  }
-});
-
-render();
 </script>
 </body>
 </html>

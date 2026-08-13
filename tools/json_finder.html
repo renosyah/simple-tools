@@ -1127,11 +1127,13 @@ tbody tr:hover td {
 }
 
 </style>
+  <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
 </head>
 
 
 <body>
 
+<div id="app">
 
 <!-- =======================================================
      TOOLBAR
@@ -1145,24 +1147,24 @@ tbody tr:hover td {
 
     <div class="toolbar-spacer"></div>
 
-    <button onclick="loadExample()">
+    <button @click="loadExample">
         Example
     </button>
 
     <button
         class="primary"
-        onclick="parseJSON()"
+        @click="parseJSON"
     >
         Explore
     </button>
 
-    <button onclick="copyFormatted()">
+    <button @click="copyFormatted">
         Copy JSON
     </button>
 
     <button
         class="danger"
-        onclick="clearAll()"
+        @click="clearAll"
     >
         Clear
     </button>
@@ -1175,7 +1177,7 @@ tbody tr:hover td {
 ======================================================== -->
 
 <div
-    id="workspace"
+    ref="workspace" id="workspace"
     class="workspace"
 >
 
@@ -1202,14 +1204,14 @@ tbody tr:hover td {
 
         <button
             class="window-button"
-            onclick="maximizeWindow('window-input')"
+            @click="maximizeWindow('window-input')"
         >
             □
         </button>
 
         <button
             class="window-button close"
-            onclick="closeWindow('window-input')"
+            @click="closeWindow('window-input')"
         >
             ×
         </button>
@@ -1219,18 +1221,9 @@ tbody tr:hover td {
 
     <div class="window-body input-body">
 
-        <textarea
-            id="jsonInput"
-            spellcheck="false"
-            placeholder="Paste JSON here..."
-        ></textarea>
+        <textarea ref="jsonInput" v-model="jsonInput" spellcheck="false" placeholder="Paste JSON here..."></textarea>
 
-        <div
-            id="status"
-            class="status"
-        >
-            Waiting for JSON...
-        </div>
+        <div :class="statusClass">{{ statusText }}</div>
 
     </div>
 
@@ -1259,14 +1252,14 @@ tbody tr:hover td {
 
         <button
             class="window-button"
-            onclick="maximizeWindow('window-search')"
+            @click="maximizeWindow('window-search')"
         >
             □
         </button>
 
         <button
             class="window-button close"
-            onclick="closeWindow('window-search')"
+            @click="closeWindow('window-search')"
         >
             ×
         </button>
@@ -1276,19 +1269,9 @@ tbody tr:hover td {
 
     <div class="window-body search-body">
 
-        <input
-            id="searchInput"
-            class="search-input"
-            placeholder="Search field, value or path..."
-            oninput="searchTree()"
-        >
+        <input ref="searchInput" v-model="searchQuery" class="search-input" placeholder="Search field, value or path..." @input="searchTree">
 
-        <span
-            id="searchCount"
-            class="search-count"
-        >
-            0 matches
-        </span>
+        <span class="search-count">{{ searchCountLabel }}</span>
 
     </div>
 
@@ -1317,14 +1300,14 @@ tbody tr:hover td {
 
         <button
             class="window-button"
-            onclick="maximizeWindow('window-tree')"
+            @click="maximizeWindow('window-tree')"
         >
             □
         </button>
 
         <button
             class="window-button close"
-            onclick="closeWindow('window-tree')"
+            @click="closeWindow('window-tree')"
         >
             ×
         </button>
@@ -1333,7 +1316,7 @@ tbody tr:hover td {
 
 
     <div
-        id="tree"
+        ref="tree" id="tree"
         class="window-body tree"
     >
 
@@ -1369,14 +1352,14 @@ tbody tr:hover td {
 
         <button
             class="window-button"
-            onclick="maximizeWindow('window-inspector')"
+            @click="maximizeWindow('window-inspector')"
         >
             □
         </button>
 
         <button
             class="window-button close"
-            onclick="closeWindow('window-inspector')"
+            @click="closeWindow('window-inspector')"
         >
             ×
         </button>
@@ -1385,7 +1368,7 @@ tbody tr:hover td {
 
 
     <div
-        id="inspector"
+        ref="inspector" id="inspector"
         class="window-body inspector"
     >
 
@@ -1420,14 +1403,14 @@ tbody tr:hover td {
 
         <button
             class="window-button"
-            onclick="maximizeWindow('window-table')"
+            @click="maximizeWindow('window-table')"
         >
             □
         </button>
 
         <button
             class="window-button close"
-            onclick="closeWindow('window-table')"
+            @click="closeWindow('window-table')"
         >
             ×
         </button>
@@ -1436,7 +1419,7 @@ tbody tr:hover td {
 
 
     <div
-        id="tableContainer"
+        ref="tableContainer" id="tableContainer"
         class="window-body table-wrapper"
     >
 
@@ -1465,7 +1448,7 @@ tbody tr:hover td {
     <button
         id="manager-input"
         class="manager-button"
-        onclick="openWindow('window-input')"
+        @click="openWindow('window-input')"
     >
         📄
     </button>
@@ -1473,7 +1456,7 @@ tbody tr:hover td {
     <button
         id="manager-search"
         class="manager-button"
-        onclick="openWindow('window-search')"
+        @click="openWindow('window-search')"
     >
         🔎
     </button>
@@ -1481,7 +1464,7 @@ tbody tr:hover td {
     <button
         id="manager-tree"
         class="manager-button"
-        onclick="openWindow('window-tree')"
+        @click="openWindow('window-tree')"
     >
         🌳
     </button>
@@ -1489,7 +1472,7 @@ tbody tr:hover td {
     <button
         id="manager-inspector"
         class="manager-button"
-        onclick="openWindow('window-inspector')"
+        @click="openWindow('window-inspector')"
     >
         🔬
     </button>
@@ -1497,39 +1480,38 @@ tbody tr:hover td {
     <button
         id="manager-table"
         class="manager-button"
-        onclick="openWindow('window-table')"
+        @click="openWindow('window-table')"
     >
         📋
     </button>
 
 </div>
 
+</div>
 
 <script>
+var ctx;
+
+
 
 /* =========================================================
    STATE
 ========================================================= */
 
-let rootData = null;
 
-let selectedNode = null;
 
-let selectedPath = "$";
 
-let selectedKey = "root";
 
-let zIndexCounter = 10;
+
+
+
+
+
 
 
 /* =========================================================
    WINDOW SYSTEM
 ========================================================= */
-
-document
-    .querySelectorAll(".window")
-    .forEach(setupWindow);
-
 
 function setupWindow(
     windowElement
@@ -1585,10 +1567,10 @@ function bringToFront(
     element
 ) {
 
-    zIndexCounter++;
+    ctx.zIndexCounter++;
 
     element.style.zIndex =
-        zIndexCounter;
+        ctx.zIndexCounter;
 
 }
 
@@ -1626,9 +1608,7 @@ function startDrag(event) {
 
 
     const workspace =
-        document.getElementById(
-            "workspace"
-        );
+        ctx.$refs.workspace;
 
 
     const workspaceRect =
@@ -1914,26 +1894,18 @@ function updateManager() {
 function parseJSON() {
 
     const text =
-        document
-            .getElementById(
-                "jsonInput"
-            )
-            .value
+        ctx.jsonInput
             .trim();
 
 
-    const status =
-        document.getElementById(
-            "status"
-        );
+    
 
 
     if (!text) {
 
-        status.className =
-            "status invalid";
+        ctx.statusClass = "status invalid";
 
-        status.textContent =
+        ctx.statusText =
             "✕ No JSON provided.";
 
         return;
@@ -1943,14 +1915,13 @@ function parseJSON() {
 
     try {
 
-        rootData =
+        ctx.rootData =
             JSON.parse(text);
 
 
-        status.className =
-            "status valid";
+        ctx.statusClass = "status valid";
 
-        status.textContent =
+        ctx.statusText =
             "✓ Valid JSON — ready to explore";
 
 
@@ -1958,7 +1929,7 @@ function parseJSON() {
 
 
         selectNode(
-            rootData,
+            ctx.rootData,
             "$",
             "root"
         );
@@ -1966,21 +1937,17 @@ function parseJSON() {
 
     } catch (error) {
 
-        rootData = null;
+        ctx.rootData = null;
 
 
-        status.className =
-            "status invalid";
+        ctx.statusClass = "status invalid";
 
-        status.textContent =
+        ctx.statusText =
             "✕ " +
             error.message;
 
 
-        document
-            .getElementById(
-                "tree"
-            )
+        ctx.$refs.tree
             .innerHTML = `
 
                 <div class="tree-empty">
@@ -2009,15 +1976,13 @@ function parseJSON() {
 function renderTree() {
 
     const tree =
-        document.getElementById(
-            "tree"
-        );
+        ctx.$refs.tree;
 
 
     tree.innerHTML = "";
 
 
-    if (rootData === null) {
+    if (ctx.rootData === null) {
         return;
     }
 
@@ -2025,7 +1990,7 @@ function renderTree() {
     tree.appendChild(
         createTreeNode(
             "root",
-            rootData,
+            ctx.rootData,
             "$",
             true
         )
@@ -2038,11 +2003,7 @@ function renderTree() {
      */
 
     const query =
-        document
-            .getElementById(
-                "searchInput"
-            )
-            .value
+        ctx.searchQuery
             .trim();
 
 
@@ -2314,19 +2275,13 @@ function createTreeNode(
 function searchTree() {
 
     const query =
-        document
-            .getElementById(
-                "searchInput"
-            )
-            .value
+        ctx.searchQuery
             .trim()
             .toLowerCase();
 
 
     const tree =
-        document.getElementById(
-            "tree"
-        );
+        ctx.$refs.tree;
 
 
     const rows =
@@ -2360,11 +2315,7 @@ function searchTree() {
 
     if (!query) {
 
-        document
-            .getElementById(
-                "searchCount"
-            )
-            .textContent =
+        ctx.searchCountLabel =
                 "0 matches";
 
         return;
@@ -2450,11 +2401,7 @@ function searchTree() {
      * Update result counter.
      */
 
-    document
-        .getElementById(
-            "searchCount"
-        )
-        .textContent =
+    ctx.searchCountLabel =
             `${matches.length} match${
                 matches.length === 1
                     ? ""
@@ -2604,13 +2551,13 @@ function selectNode(
     key
 ) {
 
-    selectedNode =
+    ctx.selectedNode =
         value;
 
-    selectedPath =
+    ctx.selectedPath =
         path;
 
-    selectedKey =
+    ctx.selectedKey =
         key;
 
 
@@ -2666,10 +2613,7 @@ function selectNode(
 
     } else {
 
-        document
-            .getElementById(
-                "tableContainer"
-            )
+        ctx.$refs.tableContainer
             .innerHTML = `
 
                 <div class="empty-message">
@@ -2713,10 +2657,7 @@ function renderInspector(
     }
 
 
-    document
-        .getElementById(
-            "inspector"
-        )
+    ctx.$refs.inspector
         .innerHTML = `
 
             <div class="field-title">
@@ -2814,16 +2755,12 @@ function renderInspector(
                 <div class="inspector-buttons">
 
 
-                    <button
-                        onclick="copyPath()"
-                    >
+                    <button class="copy-path-btn">
                         📍 Copy Path
                     </button>
 
 
-                    <button
-                        onclick="copyValue()"
-                    >
+                    <button class="copy-value-btn">
                         📋 Copy Value
                     </button>
 
@@ -2834,6 +2771,11 @@ function renderInspector(
             </div>
 
         `;
+
+    var pathBtn = ctx.$refs.inspector.querySelector(".copy-path-btn");
+    var valBtn = ctx.$refs.inspector.querySelector(".copy-value-btn");
+    if (pathBtn) pathBtn.addEventListener("click", copyPath);
+    if (valBtn) valBtn.addEventListener("click", copyValue);
 
 }
 
@@ -2847,9 +2789,7 @@ function renderTable(
 ) {
 
     const container =
-        document.getElementById(
-            "tableContainer"
-        );
+        ctx.$refs.tableContainer;
 
 
     let rows = [];
@@ -2979,9 +2919,7 @@ function renderTable(
 
             html += `
 
-                <tr
-                    onclick="selectTableRow(${index})"
-                >
+                <tr class="table-row" data-index="${index}">
 
             `;
 
@@ -3029,6 +2967,12 @@ function renderTable(
     container.innerHTML =
         html;
 
+    container.querySelectorAll(".table-row").forEach(function(row) {
+        row.addEventListener("click", function() {
+            selectTableRow(Number(row.dataset.index));
+        });
+    });
+
 }
 
 
@@ -3038,7 +2982,7 @@ function selectTableRow(
 
     if (
         !Array.isArray(
-            selectedNode
+            ctx.selectedNode
         )
     ) {
         return;
@@ -3046,9 +2990,9 @@ function selectTableRow(
 
 
     selectNode(
-        selectedNode[index],
+        ctx.selectedNode[index],
 
-        `${selectedPath}[${index}]`,
+        `${ctx.selectedPath}[${index}]`,
 
         index
     );
@@ -3353,7 +3297,7 @@ async function copyText(
 function copyPath() {
 
     copyText(
-        selectedPath
+        ctx.selectedPath
     );
 
 }
@@ -3362,8 +3306,8 @@ function copyPath() {
 function copyValue() {
 
     if (
-        selectedNode === null ||
-        selectedNode === undefined
+        ctx.selectedNode === null ||
+        ctx.selectedNode === undefined
     ) {
 
         return;
@@ -3372,12 +3316,12 @@ function copyValue() {
 
 
     const value =
-        typeof selectedNode === "string"
+        typeof ctx.selectedNode === "string"
 
-            ? selectedNode
+            ? ctx.selectedNode
 
             : JSON.stringify(
-                selectedNode,
+                ctx.selectedNode,
                 null,
                 4
             );
@@ -3393,7 +3337,7 @@ function copyValue() {
 function copyFormatted() {
 
     if (
-        rootData === null
+        ctx.rootData === null
     ) {
 
         return;
@@ -3403,7 +3347,7 @@ function copyFormatted() {
 
     copyText(
         JSON.stringify(
-            rootData,
+            ctx.rootData,
             null,
             4
         )
@@ -3418,11 +3362,7 @@ function copyFormatted() {
 
 function loadExample() {
 
-    document
-        .getElementById(
-            "jsonInput"
-        )
-        .value =
+    ctx.jsonInput =
 
 `{
     "success": true,
@@ -3486,26 +3426,19 @@ function loadExample() {
 
 function clearAll() {
 
-    rootData = null;
+    ctx.rootData = null;
 
-    selectedNode = null;
+    ctx.selectedNode = null;
 
-    selectedPath = "$";
+    ctx.selectedPath = "$";
 
-    selectedKey = "root";
-
-
-    document
-        .getElementById(
-            "jsonInput"
-        )
-        .value = "";
+    ctx.selectedKey = "root";
 
 
-    document
-        .getElementById(
-            "tree"
-        )
+    ctx.jsonInput = "";
+
+
+    ctx.$refs.tree
         .innerHTML = `
 
             <div class="tree-empty">
@@ -3518,10 +3451,7 @@ function clearAll() {
         `;
 
 
-    document
-        .getElementById(
-            "inspector"
-        )
+    ctx.$refs.inspector
         .innerHTML = `
 
             <div class="inspector-empty">
@@ -3534,10 +3464,7 @@ function clearAll() {
         `;
 
 
-    document
-        .getElementById(
-            "tableContainer"
-        )
+    ctx.$refs.tableContainer
         .innerHTML = `
 
             <div class="empty-message">
@@ -3549,32 +3476,20 @@ function clearAll() {
         `;
 
 
-    document
-        .getElementById(
-            "searchInput"
-        )
-        .value = "";
+    ctx.searchQuery = "";
 
 
-    document
-        .getElementById(
-            "searchCount"
-        )
-        .textContent =
+    ctx.searchCountLabel =
             "0 matches";
 
 
-    const status =
-        document.getElementById(
-            "status"
-        );
+    
 
 
-    status.className =
-        "status";
+    ctx.statusClass = "status";
 
 
-    status.textContent =
+    ctx.statusText =
         "Waiting for JSON...";
 
 }
@@ -3584,8 +3499,61 @@ function clearAll() {
    INIT
 ========================================================= */
 
-updateManager();
 
+new Vue({
+  el: "#app",
+  data: function() {
+    return {
+      rootData: null,
+      selectedNode: null,
+      selectedPath: "$",
+      selectedKey: "root",
+      zIndexCounter: 10,
+      jsonInput: "",
+      statusClass: "status",
+      statusText: "Waiting for JSON...",
+      searchQuery: "",
+      searchCountLabel: "0 matches"
+    };
+  },
+  mounted: function() {
+    ctx = this;
+    this.$nextTick(function() {
+      ctx.$el.querySelectorAll(".window").forEach(setupWindow);
+      updateManager();
+    });
+  },
+  methods: {
+    setupWindow: setupWindow,
+    bringToFront: bringToFront,
+    startDrag: startDrag,
+    maximizeWindow: maximizeWindow,
+    closeWindow: closeWindow,
+    openWindow: openWindow,
+    updateManager: updateManager,
+    parseJSON: parseJSON,
+    renderTree: renderTree,
+    createTreeNode: createTreeNode,
+    searchTree: searchTree,
+    expandPathToRow: expandPathToRow,
+    selectNode: selectNode,
+    renderInspector: renderInspector,
+    renderTable: renderTable,
+    selectTableRow: selectTableRow,
+    flattenObject: flattenObject,
+    getTypeLabel: getTypeLabel,
+    getValueClass: getValueClass,
+    formatShortValue: formatShortValue,
+    getSummary: getSummary,
+    escapeHTML: escapeHTML,
+    copyText: copyText,
+    copyPath: copyPath,
+    copyValue: copyValue,
+    copyFormatted: copyFormatted,
+    loadExample: loadExample,
+    clearAll: clearAll
+  }
+});
 </script>
 
 </body>
