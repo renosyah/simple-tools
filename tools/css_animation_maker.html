@@ -1,0 +1,1013 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CSS Animation Maker</title>
+<script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:#080e1a;color:#e5e7eb;font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif}
+button,input,textarea,select{font:inherit}
+button{border:1px solid #475569;background:#1e293b;color:#e5e7eb;border-radius:6px;padding:6px 10px;cursor:pointer;font-size:12px}
+button:hover{background:#334155}
+button.primary{background:#2563eb;border-color:#60a5fa;color:#fff}
+button.danger{background:#7f1d1d;border-color:#991b1b}
+button.small{padding:3px 7px;font-size:11px}
+button.icon{width:32px;height:32px;padding:0;display:inline-flex;align-items:center;justify-content:center}
+input,textarea,select{width:100%;background:#080e1a;color:#e5e7eb;border:1px solid #475569;border-radius:6px;padding:6px 8px;outline:none;font-size:12px}
+input:focus,select:focus,textarea:focus{border-color:#60a5fa}
+textarea{resize:vertical;font:11px/1.45 ui-monospace,Menlo,monospace}
+input[type=number]{width:100%}
+input[type=color]{padding:2px;height:32px;cursor:pointer}
+input[type=range]{accent-color:#2563eb;padding:0}
+.app{display:flex;flex-direction:column;height:100vh}
+.toolbar{height:52px;display:flex;align-items:center;gap:8px;padding:8px 14px;background:#111827;border-bottom:1px solid #334155;flex-shrink:0}
+.title{font-weight:750;font-size:14px}.sub{font-size:10px;color:#64748b}.spacer{flex:1}
+.speed{display:flex;align-items:center;gap:4px;font-size:11px;color:#94a3b8}
+.speed select{width:auto;min-width:64px}
+.main{display:flex;flex:1;min-height:0}
+.sidebar{width:220px;flex-shrink:0;background:#111827;border-right:1px solid #334155;display:flex;flex-direction:column;overflow:hidden}
+.sidebar-head{padding:12px;border-bottom:1px solid #263449;font-size:11px;font-weight:700;color:#94a3b8}
+.sidebar-list{flex:1;overflow:auto;padding:8px}
+.anim-item{display:flex;align-items:center;gap:6px;padding:8px;border-radius:6px;background:#0b1220;border:1px solid transparent;margin-bottom:4px;font-size:12px;cursor:pointer}
+.anim-item:hover,.anim-item.active{border-color:#60a5fa;background:#172554}
+.anim-item .name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sidebar-actions{padding:8px;display:flex;flex-direction:column;gap:6px;border-top:1px solid #263449}
+.center{flex:1;display:flex;flex-direction:column;min-width:0}
+.preview-wrap{flex:1;min-height:180px;display:flex;align-items:center;justify-content:center;background:#0a1018;border-bottom:1px solid #334155;position:relative;overflow:hidden}
+.preview-canvas{width:100%;height:100%;display:flex;align-items:center;justify-content:center;background-image:radial-gradient(circle,rgba(148,163,184,.1) 1px,transparent 1px);background-size:20px 20px}
+.preview-box{position:relative;will-change:transform,opacity;width:120px;height:80px;background:#2563eb;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;box-shadow:0 8px 24px rgba(0,0,0,.35);border:2px solid #60a5fa;user-select:none}
+.scrub-label{position:absolute;bottom:10px;right:14px;font-size:11px;color:#94a3b8;background:#111827cc;padding:4px 10px;border-radius:6px;border:1px solid #334155}
+.timeline-panel{height:280px;flex-shrink:0;display:flex;flex-direction:column;background:#111827;border-bottom:1px solid #334155}
+.timeline-head{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid #263449;font-size:11px}
+.timeline-scroll{flex:1;overflow:auto;padding:0 12px 12px}
+.ruler{position:relative;height:28px;margin-left:140px;border-bottom:1px solid #334155;margin-bottom:4px;user-select:none}
+.ruler-mark{position:absolute;top:0;transform:translateX(-50%);font-size:9px;color:#64748b;padding-top:2px}
+.ruler-mark::after{content:'';position:absolute;left:50%;bottom:0;width:1px;height:6px;background:#475569;transform:translateX(-50%)}
+.playhead-ruler{position:absolute;top:0;bottom:0;width:2px;background:#facc15;transform:translateX(-50%);z-index:20;pointer-events:none;box-shadow:0 0 8px #facc1588}
+.playhead-handle{position:absolute;top:0;left:50%;transform:translateX(-50%);width:10px;height:10px;background:#facc15;border-radius:2px;cursor:ew-resize;pointer-events:auto;z-index:25}
+.track-row{display:flex;align-items:center;height:26px;margin-bottom:2px}
+.track-label{width:140px;flex-shrink:0;font-size:10px;color:#94a3b8;padding-right:8px;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.track-label.group{font-weight:700;color:#64748b;font-size:9px;text-transform:uppercase;letter-spacing:.04em;padding-top:6px;height:auto;margin-top:4px}
+.track-lane{flex:1;position:relative;height:22px;background:#0b1220;border-radius:4px;border:1px solid #1e293b;min-width:400px}
+.track-lane::before{content:'';position:absolute;left:0;right:0;top:50%;height:1px;background:#263449}
+.kf-dot{position:absolute;top:50%;width:10px;height:10px;border-radius:50%;transform:translate(-50%,-50%);cursor:grab;border:2px solid #fff;z-index:10;box-shadow:0 2px 6px #0006}
+.kf-dot:hover{transform:translate(-50%,-50%) scale(1.2)}
+.kf-dot.selected{box-shadow:0 0 0 2px #facc15,0 2px 8px #0008;z-index:15}
+.kf-dot.dragging{cursor:grabbing;z-index:30}
+.kf-transform{background:#4ade80}
+.kf-visual{background:#60a5fa}
+.kf-size{background:#a78bfa}
+.playhead-track{position:absolute;top:0;bottom:0;width:2px;background:#facc15;transform:translateX(-50%);z-index:18;pointer-events:none}
+.bottom{display:flex;flex:1;min-height:0;max-height:340px}
+.inspector{width:300px;flex-shrink:0;border-right:1px solid #334155;background:#111827;overflow:auto;padding:12px}
+.output{flex:1;display:flex;flex-direction:column;min-width:0;background:#0b1220}
+.output-head{display:flex;align-items:center;gap:6px;padding:8px 12px;border-bottom:1px solid #263449;flex-wrap:wrap}
+.output-tabs{display:flex;gap:4px;margin-right:auto}
+.tab{padding:4px 10px;border-radius:5px;font-size:11px;cursor:pointer;background:transparent;border:1px solid transparent;color:#94a3b8}
+.tab.active{background:#172554;border-color:#60a5fa;color:#e5e7eb}
+.output-body{flex:1;overflow:auto;padding:12px}
+.css-out{font:11px/1.5 ui-monospace,Menlo,monospace;white-space:pre-wrap;color:#cbd5e1}
+.section{margin-bottom:14px;border-bottom:1px solid #263449;padding-bottom:12px}
+.section:last-child{border-bottom:0}
+.st{font-size:11px;font-weight:700;color:#94a3b8;margin-bottom:8px;cursor:pointer;display:flex;align-items:center;gap:6px;user-select:none}
+.st::before{content:'▾';font-size:9px;color:#64748b}
+.st.collapsed::before{content:'▸'}
+.field{display:grid;grid-template-columns:1fr 90px;gap:6px;align-items:center;margin-bottom:6px;font-size:11px}
+.field label{color:#94a3b8;font-size:10px}
+.field.wide{grid-template-columns:1fr}
+.field-check{display:flex;align-items:center;gap:6px;margin-bottom:6px;font-size:11px}
+.field-check input{width:auto}
+.empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#64748b;text-align:center;padding:40px}
+.empty b{color:#cbd5e1;font-size:16px;margin-bottom:8px;display:block}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#172554;border:1px solid #60a5fa;color:#e5e7eb;padding:8px 16px;border-radius:8px;font-size:12px;z-index:999;box-shadow:0 8px 30px #0008;pointer-events:none}
+.bezier-wrap{margin-top:8px}
+.bezier-canvas{width:100%;height:120px;background:#080e1a;border:1px solid #334155;border-radius:6px;cursor:crosshair;touch-action:none}
+.bezier-val{font:10px ui-monospace,Menlo,monospace;color:#94a3b8;margin-top:4px}
+.ctx-menu{position:fixed;z-index:500;background:#1e293b;border:1px solid #475569;border-radius:6px;padding:4px;min-width:140px;box-shadow:0 8px 30px #000a}
+.ctx-menu button{display:block;width:100%;text-align:left;border:0;background:transparent;padding:7px 10px;border-radius:4px}
+.ctx-menu button:hover{background:#334155}
+.kf-head{font-size:13px;font-weight:700;margin-bottom:10px;color:#facc15}
+@media(max-width:1100px){
+  .bottom{flex-direction:column;max-height:none}
+  .inspector{width:100%;max-height:240px;border-right:0;border-bottom:1px solid #334155}
+  .sidebar{width:180px}
+}
+@media(max-width:800px){
+  .main{flex-direction:column}
+  .sidebar{width:100%;max-height:140px;border-right:0;border-bottom:1px solid #334155}
+  .sidebar-list{display:flex;gap:4px;overflow-x:auto;padding:8px}
+  .anim-item{min-width:120px;margin-bottom:0}
+}
+</style>
+</head>
+<body>
+<div id="app" @click="ctxMenu=null" @contextmenu.prevent>
+  <div class="app">
+    <div class="toolbar">
+      <div>
+        <div class="title">CSS Animation Maker</div>
+        <div class="sub">Visual keyframe editor</div>
+      </div>
+      <div class="spacer"></div>
+      <template v-if="current">
+        <button class="primary" @click="togglePlay">{{ playing ? '⏸ Pause' : '▶ Play' }}</button>
+        <button @click="resetPlayback">⟳ Reset</button>
+        <label class="speed"><input type="checkbox" v-model="loopPreview"> Loop</label>
+        <div class="speed">Speed
+          <select v-model.number="playbackSpeed">
+            <option :value="0.25">0.25×</option>
+            <option :value="0.5">0.5×</option>
+            <option :value="1">1×</option>
+            <option :value="2">2×</option>
+            <option :value="4">4×</option>
+          </select>
+        </div>
+        <button class="small" @click="addKeyframeAtPlayhead">+ Keyframe</button>
+      </template>
+    </div>
+
+    <div class="main" v-if="!animations.length">
+      <div class="empty">
+        <b>No animation yet</b>
+        Create your first animation to start editing keyframes,<br>
+        preview motion, and export CSS.
+        <div style="margin-top:16px">
+          <button class="primary" @click="createAnimation">+ Create Animation</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="main" v-else>
+      <aside class="sidebar">
+        <div class="sidebar-head">ANIMATIONS</div>
+        <div class="sidebar-list">
+          <div v-for="a in animations" :key="a.id" class="anim-item" :class="{active: a.id===currentId}" @click="selectAnimation(a.id)">
+            <span class="name">{{ a.name }}</span>
+          </div>
+        </div>
+        <div class="sidebar-actions">
+          <button class="primary" @click="createAnimation">+ New Animation</button>
+          <button @click="duplicateAnimation" :disabled="!current">Duplicate</button>
+          <button @click="renameAnimation" :disabled="!current">Rename</button>
+          <button class="danger" @click="deleteAnimation" :disabled="!current">Delete</button>
+        </div>
+      </aside>
+
+      <div class="center">
+        <div class="preview-wrap">
+          <div class="preview-canvas">
+            <div ref="previewBox" class="preview-box" :style="previewStyle">BOX</div>
+          </div>
+          <div class="scrub-label">Current: {{ playhead.toFixed(1) }}%</div>
+        </div>
+
+        <div class="timeline-panel">
+          <div class="timeline-head">
+            <span style="color:#94a3b8">TIMELINE</span>
+            <div class="spacer"></div>
+            <button class="small" @click="addKeyframeAtPlayhead">+ Add Keyframe</button>
+          </div>
+          <div class="timeline-scroll" ref="timelineScroll" @dblclick="onTimelineDblClick">
+            <div class="ruler" ref="ruler" @mousedown="startPlayheadDrag($event)">
+              <div v-for="m in rulerMarks" :key="m" class="ruler-mark" :style="{left: m+'%'}">{{ m }}%</div>
+              <div class="playhead-ruler" :style="{left: playhead+'%'}">
+                <div class="playhead-handle" @mousedown.stop="startPlayheadDrag($event)"></div>
+              </div>
+            </div>
+            <div v-for="group in trackGroups" :key="group.name">
+              <div class="track-label group">{{ group.name }}</div>
+              <div v-for="track in group.tracks" :key="track.key" class="track-row">
+                <div class="track-label" :title="track.label">{{ track.label }}</div>
+                <div class="track-lane" :data-track="track.key" @mousedown="onTrackClick($event, track.key)">
+                  <div class="playhead-track" :style="{left: playhead+'%'}"></div>
+                  <div v-for="dot in trackDots(track.key)" :key="dot.kfId"
+                    class="kf-dot" :class="[track.cat, {selected: selectedKfId===dot.kfId, dragging: draggingKf && draggingKf.kfId===dot.kfId}]"
+                    :style="{left: dot.percent+'%'}"
+                    :title="dot.percent.toFixed(1)+'%'"
+                    @mousedown.stop="startKfDrag($event, dot.kfId, track.key)"
+                    @click.stop="selectKeyframe(dot.kfId)"
+                    @contextmenu.stop="openCtxMenu($event, dot.kfId)">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bottom">
+          <div class="inspector" ref="inspector">
+            <div v-if="!selectedKf" class="hint" style="color:#64748b;font-size:12px">Select a keyframe on the timeline or double-click to add one.</div>
+
+            <div v-if="selectedKf" class="section">
+              <div class="kf-head">KEYFRAME: {{ selectedKf.percent.toFixed(1) }}%</div>
+              <div class="field-check"><input type="checkbox" :checked="true" disabled> <span>Editing this keyframe</span></div>
+            </div>
+
+            <div v-for="sec in inspectorSections" :key="sec.id" class="section">
+              <div class="st" :class="{collapsed: collapsed[sec.id]}" @click="toggleSection(sec.id)">{{ sec.title }}</div>
+              <div v-show="!collapsed[sec.id]">
+                <div v-for="f in sec.fields" :key="f.key" class="field">
+                  <label>
+                    <input type="checkbox" :checked="isPropEnabled(selectedKf, f.key)" @change="toggleProp(f.key, $event.target.checked)">
+                    {{ f.label }}
+                  </label>
+                  <input v-if="f.type==='number'" type="number" :step="f.step||1"
+                    :value="getKfProp(selectedKf, f.key)"
+                    :disabled="!isPropEnabled(selectedKf, f.key)"
+                    @input="setKfProp(f.key, +$event.target.value)">
+                  <input v-else-if="f.type==='color'" type="color"
+                    :value="getKfProp(selectedKf, f.key) || '#2563eb'"
+                    :disabled="!isPropEnabled(selectedKf, f.key)"
+                    @input="setKfProp(f.key, $event.target.value)">
+                  <input v-else type="text"
+                    :value="getKfProp(selectedKf, f.key)"
+                    :disabled="!isPropEnabled(selectedKf, f.key)"
+                    @input="setKfProp(f.key, $event.target.value)">
+                </div>
+              </div>
+            </div>
+
+            <div class="section">
+              <div class="st" :class="{collapsed: collapsed.preview}" @click="toggleSection('preview')">PREVIEW ELEMENT</div>
+              <div v-show="!collapsed.preview">
+                <div class="field"><label>Width</label><input type="text" v-model="current.preview.width" @input="pushHistory"></div>
+                <div class="field"><label>Height</label><input type="text" v-model="current.preview.height" @input="pushHistory"></div>
+                <div class="field"><label>Background</label><input type="color" v-model="current.preview.background" @input="pushHistory"></div>
+                <div class="field"><label>Color</label><input type="color" v-model="current.preview.color" @input="pushHistory"></div>
+                <div class="field"><label>Border radius</label><input type="text" v-model="current.preview.borderRadius" @input="pushHistory"></div>
+                <div class="field wide"><label>Box shadow</label><input type="text" v-model="current.preview.boxShadow" @input="pushHistory"></div>
+              </div>
+            </div>
+
+            <div class="section">
+              <div class="st" :class="{collapsed: collapsed.animation}" @click="toggleSection('animation')">ANIMATION SETTINGS</div>
+              <div v-show="!collapsed.animation">
+                <div class="field"><label>Name</label><input type="text" v-model="current.name" @input="pushHistory"></div>
+                <div class="field"><label>Duration</label><input type="text" v-model="current.duration" @input="pushHistory" placeholder="1s"></div>
+                <div class="field"><label>Delay</label><input type="text" v-model="current.delay" @input="pushHistory" placeholder="0s"></div>
+                <div class="field"><label>Iterations</label>
+                  <select v-model="current.iterationCount" @change="pushHistory">
+                    <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="infinite">infinite</option>
+                  </select>
+                </div>
+                <div class="field"><label>Direction</label>
+                  <select v-model="current.direction" @change="pushHistory">
+                    <option>normal</option><option>reverse</option><option>alternate</option><option>alternate-reverse</option>
+                  </select>
+                </div>
+                <div class="field"><label>Fill mode</label>
+                  <select v-model="current.fillMode" @change="pushHistory">
+                    <option>none</option><option>forwards</option><option>backwards</option><option>both</option>
+                  </select>
+                </div>
+                <div class="field"><label>Easing preset</label>
+                  <select v-model="easingPreset" @change="applyEasingPreset">
+                    <option value="linear">linear</option>
+                    <option value="ease">ease</option>
+                    <option value="ease-in">ease-in</option>
+                    <option value="ease-out">ease-out</option>
+                    <option value="ease-in-out">ease-in-out</option>
+                    <option value="custom">cubic-bezier (custom)</option>
+                  </select>
+                </div>
+                <div v-if="easingPreset==='custom'" class="bezier-wrap">
+                  <canvas ref="bezierCanvas" class="bezier-canvas" width="260" height="120"
+                    @mousedown="startBezierDrag"></canvas>
+                  <div class="bezier-val">{{ current.timingFunction }}</div>
+                </div>
+                <div v-else class="bezier-val">{{ current.timingFunction }}</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="output">
+            <div class="output-head">
+              <div class="output-tabs">
+                <span class="tab" :class="{active: outputTab==='css'}" @click="outputTab='css'">CSS</span>
+                <span class="tab" :class="{active: outputTab==='html'}" @click="outputTab='html'">HTML + CSS</span>
+                <span class="tab" :class="{active: outputTab==='tw'}" @click="outputTab='tw'">Tailwind</span>
+              </div>
+              <button class="small" @click="copyOutput">Copy</button>
+              <button class="small" @click="downloadOutput">Download</button>
+            </div>
+            <div class="output-body"><pre class="css-out">{{ outputText }}</pre></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div v-if="ctxMenu" class="ctx-menu" :style="{left: ctxMenu.x+'px', top: ctxMenu.y+'px'}" @click.stop>
+    <button @click="ctxDuplicate">Duplicate keyframe</button>
+    <button @click="ctxDelete">Delete keyframe</button>
+  </div>
+  <div v-if="toast" class="toast">{{ toast }}</div>
+</div>
+
+<script>
+var PROP_DEFS = [
+  { key: "translateX", label: "Translate X", cat: "transform", type: "number", step: 1, default: 0, unit: "px", group: "Transform" },
+  { key: "translateY", label: "Translate Y", cat: "transform", type: "number", step: 1, default: 0, unit: "px", group: "Transform" },
+  { key: "scaleX", label: "Scale X", cat: "transform", type: "number", step: 0.05, default: 1, unit: "", group: "Transform" },
+  { key: "scaleY", label: "Scale Y", cat: "transform", type: "number", step: 0.05, default: 1, unit: "", group: "Transform" },
+  { key: "rotate", label: "Rotate", cat: "transform", type: "number", step: 1, default: 0, unit: "deg", group: "Transform" },
+  { key: "skewX", label: "Skew X", cat: "transform", type: "number", step: 1, default: 0, unit: "deg", group: "Transform" },
+  { key: "skewY", label: "Skew Y", cat: "transform", type: "number", step: 1, default: 0, unit: "deg", group: "Transform" },
+  { key: "opacity", label: "Opacity", cat: "visual", type: "number", step: 0.05, default: 1, unit: "", group: "Visual" },
+  { key: "background", label: "Background", cat: "visual", type: "color", default: "#2563eb", unit: "", group: "Visual" },
+  { key: "color", label: "Color", cat: "visual", type: "color", default: "#ffffff", unit: "", group: "Visual" },
+  { key: "borderRadius", label: "Border radius", cat: "visual", type: "text", default: "8px", unit: "", group: "Visual" },
+  { key: "width", label: "Width", cat: "size", type: "text", default: "120px", unit: "", group: "Size" },
+  { key: "height", label: "Height", cat: "size", type: "text", default: "80px", unit: "", group: "Size" },
+  { key: "boxShadow", label: "Box shadow", cat: "visual", type: "text", default: "0 8px 24px rgba(0,0,0,.35)", unit: "", group: "Visual" }
+];
+
+var TRANSFORM_KEYS = ["translateX","translateY","scaleX","scaleY","rotate","skewX","skewY"];
+
+function uid() { return "k_" + Math.random().toString(36).slice(2, 9); }
+function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+function snapPct(p) { return Math.round(p * 10) / 10; }
+
+function defaultKeyframe(percent, overrides) {
+  var props = {};
+  PROP_DEFS.forEach(function(d) {
+    props[d.key] = { enabled: false, value: d.default };
+  });
+  if (overrides) {
+    Object.keys(overrides).forEach(function(k) {
+      props[k] = { enabled: true, value: overrides[k] };
+    });
+  }
+  return { id: uid(), percent: snapPct(percent), props: props };
+}
+
+function defaultAnimation(name) {
+  return {
+    id: uid(),
+    name: name,
+    duration: "1s",
+    delay: "0s",
+    iterationCount: "1",
+    direction: "normal",
+    fillMode: "both",
+    timingFunction: "ease-in-out",
+    preview: {
+      width: "120px", height: "80px", background: "#2563eb", color: "#ffffff",
+      borderRadius: "8px", boxShadow: "0 8px 24px rgba(0,0,0,.35)"
+    },
+    keyframes: [
+      defaultKeyframe(0, { translateX: 0, translateY: 0, scaleX: 1, scaleY: 1, rotate: 0, skewX: 0, skewY: 0, opacity: 1 }),
+      defaultKeyframe(50, { translateX: 100, translateY: 0, scaleX: 1.2, scaleY: 1.2, rotate: 180, opacity: 0.7 }),
+      defaultKeyframe(100, { translateX: 200, translateY: 0, scaleX: 1, scaleY: 1, rotate: 360, opacity: 1 })
+    ]
+  };
+}
+
+function parseColor(c) {
+  if (!c) return [37, 99, 235];
+  c = String(c).trim();
+  if (c.startsWith("#")) {
+    var h = c.slice(1);
+    if (h.length === 3) h = h.split("").map(function(x){ return x + x; }).join("");
+    return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)];
+  }
+  var m = c.match(/rgba?\(([^)]+)\)/);
+  if (m) {
+    var p = m[1].split(",").map(function(x){ return parseFloat(x.trim()); });
+    return [p[0], p[1], p[2]];
+  }
+  return [37, 99, 235];
+}
+
+function lerpColor(a, b, t) {
+  var ca = parseColor(a), cb = parseColor(b);
+  var r = Math.round(ca[0] + (cb[0] - ca[0]) * t);
+  var g = Math.round(ca[1] + (cb[1] - ca[1]) * t);
+  var bl = Math.round(ca[2] + (cb[2] - ca[2]) * t);
+  return "rgb(" + r + "," + g + "," + bl + ")";
+}
+
+function lerpAngle(a, b, t) {
+  var diff = ((b - a + 540) % 360) - 180;
+  return a + diff * t;
+}
+
+function parseBezier(str) {
+  var m = String(str || "").match(/cubic-bezier\s*\(\s*([-\d.]+)\s*,\s*([-\d.]+)\s*,\s*([-\d.]+)\s*,\s*([-\d.]+)\s*\)/);
+  if (m) return [+m[1], +m[2], +m[3], +m[4]];
+  return [0.42, 0, 0.58, 1];
+}
+
+new Vue({
+  el: "#app",
+  data: function() {
+    return {
+      animations: [],
+      currentId: null,
+      playhead: 0,
+      selectedKfId: null,
+      playing: false,
+      loopPreview: true,
+      playbackSpeed: 1,
+      playStart: 0,
+      playFrom: 0,
+      outputTab: "css",
+      collapsed: { transform: false, visual: false, size: false, preview: false, animation: false },
+      toast: "",
+      ctxMenu: null,
+      draggingKf: null,
+      draggingPlayhead: false,
+      draggingBezier: null,
+      easingPreset: "ease-in-out",
+      history: [],
+      historyIndex: -1,
+      historyLock: false
+    };
+  },
+  computed: {
+    current: function() {
+      return this.animations.find(function(a){ return a.id === this.currentId; }.bind(this)) || null;
+    },
+    selectedKf: function() {
+      if (!this.current || !this.selectedKfId) return null;
+      return this.current.keyframes.find(function(k){ return k.id === this.selectedKfId; }.bind(this)) || null;
+    },
+    rulerMarks: function() {
+      var m = [];
+      for (var i = 0; i <= 100; i += 10) m.push(i);
+      return m;
+    },
+    trackGroups: function() {
+      var groups = {};
+      PROP_DEFS.forEach(function(d) {
+        if (!groups[d.group]) groups[d.group] = { name: d.group, tracks: [] };
+        groups[d.group].tracks.push({ key: d.key, label: d.label, cat: d.cat === "transform" ? "kf-transform" : d.cat === "size" ? "kf-size" : "kf-visual" });
+      });
+      return Object.keys(groups).map(function(k){ return groups[k]; });
+    },
+    inspectorSections: function() {
+      var map = {};
+      PROP_DEFS.forEach(function(d) {
+        if (!map[d.group]) map[d.group] = { id: d.group.toLowerCase(), title: d.group.toUpperCase(), fields: [] };
+        map[d.group].fields.push(d);
+      });
+      return Object.keys(map).map(function(k){ return map[k]; });
+    },
+    interpolated: function() {
+      if (!this.current) return {};
+      return this.computeAtPercent(this.playhead);
+    },
+    previewStyle: function() {
+      if (!this.current) return {};
+      var p = this.current.preview;
+      if (this.playing) {
+        return {
+          width: p.width, height: p.height, background: p.background,
+          color: p.color, borderRadius: p.borderRadius, boxShadow: p.boxShadow
+        };
+      }
+      var s = this.interpolated;
+      return {
+        width: s.width != null ? s.width : p.width,
+        height: s.height != null ? s.height : p.height,
+        background: s.background != null ? s.background : p.background,
+        color: s.color != null ? s.color : p.color,
+        borderRadius: s.borderRadius != null ? s.borderRadius : p.borderRadius,
+        boxShadow: s.boxShadow != null ? s.boxShadow : p.boxShadow,
+        opacity: s.opacity != null ? s.opacity : 1,
+        transform: this.buildTransform(s)
+      };
+    },
+    cssKeyframes: function() {
+      if (!this.current) return "";
+      return this.generateCSS(false);
+    },
+    htmlOutput: function() {
+      if (!this.current) return "";
+      var name = this.safeName(this.current.name);
+      return '<div class="animated-' + name + '"></div>\n\n<style>\n' + this.generateCSS(true) + '\n</style>';
+    },
+    tailwindOutput: function() {
+      if (!this.current) return "";
+      var name = this.safeName(this.current.name);
+      var anim = name + " " + this.current.duration + " " + this.current.timingFunction;
+      return "/* Tailwind arbitrary animation suggestion */\n\n<div class=\"[" + "animation:" + anim.replace(/\s+/g, "_") + "]\"></div>\n\n<style>\n" + this.generateCSS(true) + "\n</style>";
+    },
+    outputText: function() {
+      if (this.outputTab === "html") return this.htmlOutput;
+      if (this.outputTab === "tw") return this.tailwindOutput;
+      return this.cssKeyframes;
+    },
+    scrubbing: function() {
+      return this.draggingPlayhead;
+    }
+  },
+  watch: {
+    currentId: function() {
+      this.selectedKfId = null;
+      this.playhead = 0;
+      this.stopPlayback();
+      this.syncEasingPreset();
+      this.$nextTick(this.drawBezier);
+    },
+    playhead: function() {
+      if (!this.playing) this.applyScrubStyle();
+    }
+  },
+  mounted: function() {
+    var self = this;
+    document.addEventListener("keydown", function(e) {
+      if ((e.ctrlKey || e.metaKey) && e.key === "z") { e.preventDefault(); self.undo(); }
+      if ((e.ctrlKey || e.metaKey) && e.key === "y") { e.preventDefault(); self.redo(); }
+      if (e.code === "Space" && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) {
+        e.preventDefault();
+        self.togglePlay();
+      }
+    });
+    this.raf = requestAnimationFrame(this.tick);
+  },
+  beforeDestroy: function() {
+    cancelAnimationFrame(this.raf);
+  },
+  methods: {
+    safeName: function(n) {
+      return String(n || "anim").replace(/[^a-zA-Z0-9_-]/g, "") || "anim";
+    },
+    toggleSection: function(id) {
+      this.$set(this.collapsed, id, !this.collapsed[id]);
+    },
+    pushHistory: function() {
+      if (this.historyLock || !this.current) return;
+      var snap = JSON.stringify(this.animations);
+      this.history = this.history.slice(0, this.historyIndex + 1);
+      this.history.push(snap);
+      if (this.history.length > 60) this.history.shift();
+      this.historyIndex = this.history.length - 1;
+    },
+    undo: function() {
+      if (this.historyIndex <= 0) return;
+      this.historyLock = true;
+      this.historyIndex--;
+      this.animations = JSON.parse(this.history[this.historyIndex]);
+      this.historyLock = false;
+      this.ensureCurrent();
+    },
+    redo: function() {
+      if (this.historyIndex >= this.history.length - 1) return;
+      this.historyLock = true;
+      this.historyIndex++;
+      this.animations = JSON.parse(this.history[this.historyIndex]);
+      this.historyLock = false;
+      this.ensureCurrent();
+    },
+    ensureCurrent: function() {
+      if (!this.animations.some(function(a){ return a.id === this.currentId; }.bind(this))) {
+        this.currentId = this.animations.length ? this.animations[0].id : null;
+      }
+    },
+    createAnimation: function() {
+      var n = this.animations.length + 1;
+      var a = defaultAnimation("Animation " + n);
+      this.animations.push(a);
+      this.currentId = a.id;
+      this.selectedKfId = a.keyframes[0].id;
+      this.playhead = 0;
+      this.pushHistory();
+    },
+    selectAnimation: function(id) {
+      this.currentId = id;
+    },
+    duplicateAnimation: function() {
+      if (!this.current) return;
+      var copy = JSON.parse(JSON.stringify(this.current));
+      copy.id = uid();
+      copy.name = this.current.name + " Copy";
+      copy.keyframes.forEach(function(k){ k.id = uid(); });
+      this.animations.push(copy);
+      this.currentId = copy.id;
+      this.pushHistory();
+    },
+    renameAnimation: function() {
+      if (!this.current) return;
+      var n = prompt("Animation name:", this.current.name);
+      if (n && n.trim()) { this.current.name = n.trim(); this.pushHistory(); }
+    },
+    deleteAnimation: function() {
+      if (!this.current || !confirm("Delete " + this.current.name + "?")) return;
+      this.animations = this.animations.filter(function(a){ return a.id !== this.currentId; }.bind(this));
+      this.currentId = this.animations.length ? this.animations[0].id : null;
+      this.pushHistory();
+    },
+    selectKeyframe: function(id) {
+      this.selectedKfId = id;
+    },
+    findKfAtPercent: function(pct, tolerance) {
+      tolerance = tolerance || 0.5;
+      return this.current.keyframes.find(function(k){ return Math.abs(k.percent - pct) < tolerance; });
+    },
+    addKeyframeAtPlayhead: function() {
+      if (!this.current) return;
+      var existing = this.findKfAtPercent(this.playhead);
+      if (existing) { this.selectedKfId = existing.id; return; }
+      var vals = this.computeAtPercent(this.playhead);
+      var overrides = {};
+      PROP_DEFS.forEach(function(d) {
+        if (vals[d.key] != null) overrides[d.key] = vals[d.key];
+      });
+      var kf = defaultKeyframe(this.playhead, overrides);
+      PROP_DEFS.forEach(function(d) { kf.props[d.key].enabled = true; });
+      this.current.keyframes.push(kf);
+      this.sortKeyframes();
+      this.selectedKfId = kf.id;
+      this.pushHistory();
+    },
+    onTimelineDblClick: function(e) {
+      if (!this.current) return;
+      var lane = e.target.closest(".track-lane") || e.target.closest(".ruler");
+      if (!lane) return;
+      var rect = lane.getBoundingClientRect();
+      var pct = snapPct(clamp((e.clientX - rect.left) / rect.width * 100, 0, 100));
+      this.playhead = pct;
+      var existing = this.findKfAtPercent(pct);
+      if (existing) { this.selectedKfId = existing.id; return; }
+      this.addKeyframeAtPlayhead();
+    },
+    onTrackClick: function(e, propKey) {
+      if (e.detail > 1) return;
+      var rect = e.currentTarget.getBoundingClientRect();
+      var pct = snapPct(clamp((e.clientX - rect.left) / rect.width * 100, 0, 100));
+      this.playhead = pct;
+    },
+    sortKeyframes: function() {
+      this.current.keyframes.sort(function(a, b){ return a.percent - b.percent; });
+    },
+    deleteKeyframe: function(id) {
+      if (!this.current || this.current.keyframes.length <= 1) return;
+      this.current.keyframes = this.current.keyframes.filter(function(k){ return k.id !== id; });
+      if (this.selectedKfId === id) this.selectedKfId = this.current.keyframes[0].id;
+      this.pushHistory();
+    },
+    duplicateKeyframe: function(id) {
+      var src = this.current.keyframes.find(function(k){ return k.id === id; });
+      if (!src) return;
+      var copy = JSON.parse(JSON.stringify(src));
+      copy.id = uid();
+      copy.percent = snapPct(clamp(src.percent + 5, 0, 100));
+      while (this.findKfAtPercent(copy.percent, 0.1)) copy.percent = snapPct(clamp(copy.percent + 1, 0, 100));
+      this.current.keyframes.push(copy);
+      this.sortKeyframes();
+      this.selectedKfId = copy.id;
+      this.pushHistory();
+    },
+    openCtxMenu: function(e, kfId) {
+      this.ctxMenu = { x: e.clientX, y: e.clientY, kfId: kfId };
+      this.selectedKfId = kfId;
+    },
+    ctxDuplicate: function() { if (this.ctxMenu) this.duplicateKeyframe(this.ctxMenu.kfId); this.ctxMenu = null; },
+    ctxDelete: function() { if (this.ctxMenu) this.deleteKeyframe(this.ctxMenu.kfId); this.ctxMenu = null; },
+    trackDots: function(propKey) {
+      if (!this.current) return [];
+      var dots = [];
+      this.current.keyframes.forEach(function(kf) {
+        if (kf.props[propKey] && kf.props[propKey].enabled) {
+          dots.push({ kfId: kf.id, percent: kf.percent });
+        }
+      });
+      return dots;
+    },
+    isPropEnabled: function(kf, key) {
+      return kf && kf.props[key] && kf.props[key].enabled;
+    },
+    getKfProp: function(kf, key) {
+      if (!kf || !kf.props[key]) return PROP_DEFS.find(function(d){ return d.key === key; }).default;
+      return kf.props[key].value;
+    },
+    toggleProp: function(key, on) {
+      if (!this.selectedKf) return;
+      this.$set(this.selectedKf.props[key], "enabled", on);
+      if (on && this.selectedKf.props[key].value == null) {
+        var val = this.computeAtPercent(this.selectedKf.percent)[key];
+        this.selectedKf.props[key].value = val != null ? val : PROP_DEFS.find(function(d){ return d.key === key; }).default;
+      }
+      this.pushHistory();
+    },
+    setKfProp: function(key, val) {
+      if (!this.selectedKf) return;
+      if (!this.selectedKf.props[key].enabled) this.selectedKf.props[key].enabled = true;
+      this.selectedKf.props[key].value = val;
+      this.pushHistory();
+    },
+    pctFromEvent: function(e, el) {
+      var rect = (el || e.currentTarget).getBoundingClientRect();
+      return snapPct(clamp((e.clientX - rect.left) / rect.width * 100, 0, 100));
+    },
+    startPlayheadDrag: function(e) {
+      var self = this;
+      this.stopPlayback();
+      this.draggingPlayhead = true;
+      var ruler = this.$refs.ruler;
+      function move(ev) {
+        self.playhead = self.pctFromEvent(ev, ruler);
+      }
+      function up() {
+        self.draggingPlayhead = false;
+        document.removeEventListener("mousemove", move);
+        document.removeEventListener("mouseup", up);
+      }
+      move(e);
+      document.addEventListener("mousemove", move);
+      document.addEventListener("mouseup", up);
+    },
+    startKfDrag: function(e, kfId, propKey) {
+      var self = this;
+      this.selectedKfId = kfId;
+      var kf = this.current.keyframes.find(function(k){ return k.id === kfId; });
+      var lane = e.target.closest(".track-lane");
+      this.draggingKf = { kfId: kfId, propKey: propKey };
+      function move(ev) {
+        var pct = self.pctFromEvent(ev, lane);
+        var conflict = self.current.keyframes.some(function(k) {
+          return k.id !== kfId && Math.abs(k.percent - pct) < 0.05;
+        });
+        if (!conflict) kf.percent = pct;
+      }
+      function up() {
+        self.draggingKf = null;
+        self.sortKeyframes();
+        self.pushHistory();
+        document.removeEventListener("mousemove", move);
+        document.removeEventListener("mouseup", up);
+      }
+      document.addEventListener("mousemove", move);
+      document.addEventListener("mouseup", up);
+    },
+    computeAtPercent: function(pct) {
+      if (!this.current) return {};
+      var result = {};
+      var self = this;
+      PROP_DEFS.forEach(function(def) {
+        var pts = self.current.keyframes
+          .filter(function(kf){ return kf.props[def.key] && kf.props[def.key].enabled; })
+          .map(function(kf){ return { percent: kf.percent, value: kf.props[def.key].value }; })
+          .sort(function(a, b){ return a.percent - b.percent; });
+        if (!pts.length) return;
+        if (pct <= pts[0].percent) { result[def.key] = pts[0].value; return; }
+        if (pct >= pts[pts.length - 1].percent) { result[def.key] = pts[pts.length - 1].value; return; }
+        for (var i = 0; i < pts.length - 1; i++) {
+          var a = pts[i], b = pts[i + 1];
+          if (pct >= a.percent && pct <= b.percent) {
+            var t = (pct - a.percent) / (b.percent - a.percent);
+            if (def.type === "color") result[def.key] = lerpColor(a.value, b.value, t);
+            else if (def.key === "rotate" || def.key === "skewX" || def.key === "skewY") result[def.key] = lerpAngle(+a.value, +b.value, t);
+            else if (def.type === "number") result[def.key] = +a.value + (+b.value - +a.value) * t;
+            else result[def.key] = t < 0.5 ? a.value : b.value;
+            return;
+          }
+        }
+      });
+      return result;
+    },
+    buildTransform: function(s) {
+      var tx = s.translateX != null ? s.translateX : 0;
+      var ty = s.translateY != null ? s.translateY : 0;
+      var sx = s.scaleX != null ? s.scaleX : 1;
+      var sy = s.scaleY != null ? s.scaleY : 1;
+      var rot = s.rotate != null ? s.rotate : 0;
+      var skX = s.skewX != null ? s.skewX : 0;
+      var skY = s.skewY != null ? s.skewY : 0;
+      return "translateX(" + tx + "px) translateY(" + ty + "px) rotate(" + rot + "deg) scaleX(" + sx + ") scaleY(" + sy + ") skewX(" + skX + "deg) skewY(" + skY + "deg)";
+    },
+    buildTransformCSS: function(kf) {
+      var parts = [];
+      var p = kf.props;
+      if (p.translateX && p.translateX.enabled) parts.push("translateX(" + p.translateX.value + "px)");
+      if (p.translateY && p.translateY.enabled) parts.push("translateY(" + p.translateY.value + "px)");
+      if (p.rotate && p.rotate.enabled) parts.push("rotate(" + p.rotate.value + "deg)");
+      if (p.scaleX && p.scaleX.enabled) parts.push("scaleX(" + p.scaleX.value + ")");
+      if (p.scaleY && p.scaleY.enabled) parts.push("scaleY(" + p.scaleY.value + ")");
+      if (p.skewX && p.skewX.enabled) parts.push("skewX(" + p.skewX.value + "deg)");
+      if (p.skewY && p.skewY.enabled) parts.push("skewY(" + p.skewY.value + "deg)");
+      return parts.length ? parts.join("\n      ") : null;
+    },
+    generateCSS: function(includeClass) {
+      var a = this.current;
+      var name = this.safeName(a.name);
+      var lines = ["@keyframes " + name + " {"];
+      a.keyframes.forEach(function(kf) {
+        lines.push("  " + kf.percent + "% {");
+        var tf = this.buildTransformCSS(kf);
+        if (tf) lines.push("    transform:\n      " + tf + ";");
+        PROP_DEFS.forEach(function(d) {
+          if (TRANSFORM_KEYS.indexOf(d.key) >= 0) return;
+          var pr = kf.props[d.key];
+          if (pr && pr.enabled) {
+            var cssKey = d.key === "borderRadius" ? "border-radius" : d.key === "boxShadow" ? "box-shadow" : d.key;
+            var val = pr.value;
+            if (d.key === "opacity") val = pr.value;
+            lines.push("    " + cssKey + ": " + val + (d.unit && d.type === "number" ? d.unit : "") + ";");
+          }
+        }.bind(this));
+        lines.push("  }");
+      }.bind(this));
+      lines.push("}");
+      if (includeClass) {
+        lines.push("");
+        lines.push(".animated-" + name + " {");
+        lines.push("  width: " + a.preview.width + ";");
+        lines.push("  height: " + a.preview.height + ";");
+        lines.push("  background: " + a.preview.background + ";");
+        lines.push("  color: " + a.preview.color + ";");
+        lines.push("  border-radius: " + a.preview.borderRadius + ";");
+        lines.push("  box-shadow: " + a.preview.boxShadow + ";");
+        lines.push("  animation:");
+        lines.push("    " + name + " " + a.duration + " " + a.timingFunction + " " + a.delay + " " + a.iterationCount + " " + a.direction + " " + a.fillMode + ";");
+        lines.push("}");
+      } else {
+        lines.push("");
+        lines.push("." + name + "-target {");
+        lines.push("  animation:");
+        lines.push("    " + name + " " + a.duration + " " + a.timingFunction + " " + a.delay + " " + a.iterationCount + " " + a.direction + " " + a.fillMode + ";");
+        lines.push("}");
+      }
+      return lines.join("\n");
+    },
+    applyScrubStyle: function() {
+      /* previewStyle computed handles scrubbing */
+    },
+    togglePlay: function() {
+      if (!this.current) return;
+      if (this.playing) this.stopPlayback();
+      else this.startPlayback();
+    },
+    startPlayback: function() {
+      this.playing = true;
+      this.playStart = performance.now();
+      this.playFrom = this.playhead;
+      this.runCssAnimation();
+    },
+    stopPlayback: function() {
+      this.playing = false;
+      if (this.$refs.previewBox) {
+        this.$refs.previewBox.style.animation = "";
+      }
+    },
+    resetPlayback: function() {
+      this.stopPlayback();
+      if (!this.current) return;
+      var name = this.current.name;
+      var id = this.current.id;
+      var fresh = defaultAnimation(name);
+      fresh.id = id;
+      var idx = this.animations.findIndex(function(a){ return a.id === id; });
+      if (idx >= 0) {
+        this.$set(this.animations, idx, fresh);
+        this.selectedKfId = fresh.keyframes[0].id;
+      }
+      this.playhead = 0;
+      this.pushHistory();
+    },
+    runCssAnimation: function() {
+      var el = this.$refs.previewBox;
+      if (!el || !this.current) return;
+      var name = this.safeName(this.current.name);
+      var dur = parseFloat(this.current.duration) || 1;
+      var realDur = dur / this.playbackSpeed;
+      el.style.animation = "none";
+      void el.offsetWidth;
+      var iter = this.loopPreview ? (this.current.iterationCount === "infinite" ? "infinite" : this.current.iterationCount) : "1";
+      el.style.animation = name + " " + realDur + "s " + this.current.timingFunction + " " + this.current.delay + " " + iter + " " + this.current.direction + " " + this.current.fillMode;
+      this.injectKeyframeStyle();
+    },
+    injectKeyframeStyle: function() {
+      var id = "anim-maker-keyframes";
+      var old = document.getElementById(id);
+      if (old) old.remove();
+      var style = document.createElement("style");
+      style.id = id;
+      style.textContent = this.generateCSS(false).replace(/\.[\w-]+-target\s*\{[^}]+\}/, "");
+      document.head.appendChild(style);
+    },
+    tick: function(now) {
+      if (this.playing && this.current) {
+        var dur = (parseFloat(this.current.duration) || 1) * 1000 / this.playbackSpeed;
+        var elapsed = now - this.playStart;
+        var progress = this.playFrom + (elapsed / dur) * 100;
+        if (progress >= 100) {
+          if (this.loopPreview) {
+            this.playStart = now;
+            this.playFrom = 0;
+            this.playhead = 0;
+            this.runCssAnimation();
+          } else {
+            this.playhead = 100;
+            this.playing = false;
+          }
+        } else {
+          this.playhead = progress;
+        }
+      }
+      this.raf = requestAnimationFrame(this.tick);
+    },
+    syncEasingPreset: function() {
+      if (!this.current) return;
+      var tf = this.current.timingFunction;
+      if (["linear","ease","ease-in","ease-out","ease-in-out"].indexOf(tf) >= 0) this.easingPreset = tf;
+      else this.easingPreset = "custom";
+      this.$nextTick(this.drawBezier);
+    },
+    applyEasingPreset: function() {
+      if (!this.current) return;
+      if (this.easingPreset !== "custom") {
+        this.current.timingFunction = this.easingPreset;
+      } else if (!this.current.timingFunction.startsWith("cubic-bezier")) {
+        this.current.timingFunction = "cubic-bezier(0.42, 0, 0.58, 1)";
+      }
+      this.pushHistory();
+      this.$nextTick(this.drawBezier);
+    },
+    drawBezier: function() {
+      var canvas = this.$refs.bezierCanvas;
+      if (!canvas || !this.current) return;
+      var ctx = canvas.getContext("2d");
+      var w = canvas.width, h = canvas.height;
+      var pad = 16;
+      ctx.clearRect(0, 0, w, h);
+      var bez = parseBezier(this.current.timingFunction);
+      var p0 = [pad, h - pad], p3 = [w - pad, pad];
+      var p1 = [pad + bez[0] * (w - 2 * pad), h - pad - bez[1] * (h - 2 * pad)];
+      var p2 = [pad + bez[2] * (w - 2 * pad), h - pad - bez[3] * (h - 2 * pad)];
+      ctx.strokeStyle = "#334155";
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(p0[0], p0[1]); ctx.lineTo(p1[0], p1[1]); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(p3[0], p3[1]); ctx.lineTo(p2[0], p2[1]); ctx.stroke();
+      ctx.strokeStyle = "#60a5fa"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(p0[0], p0[1]);
+      ctx.bezierCurveTo(p1[0], p1[1], p2[0], p2[1], p3[0], p3[1]);
+      ctx.stroke();
+      [[p0,"#64748b"],[p1,"#4ade80"],[p2,"#4ade80"],[p3,"#64748b"]].forEach(function(pt) {
+        ctx.fillStyle = pt[1]; ctx.beginPath(); ctx.arc(pt[0][0], pt[0][1], 5, 0, Math.PI * 2); ctx.fill();
+      });
+      this._bezierPts = { p0: p0, p1: p1, p2: p2, p3: p3, pad: pad, w: w, h: h };
+    },
+    startBezierDrag: function(e) {
+      var self = this;
+      var canvas = this.$refs.bezierCanvas;
+      if (!canvas) return;
+      var rect = canvas.getBoundingClientRect();
+      var mx = (e.clientX - rect.left) * (canvas.width / rect.width);
+      var my = (e.clientY - rect.top) * (canvas.height / rect.height);
+      var pts = this._bezierPts;
+      if (!pts) return;
+      var d1 = Math.hypot(mx - pts.p1[0], my - pts.p1[1]);
+      var d2 = Math.hypot(mx - pts.p2[0], my - pts.p2[1]);
+      this.draggingBezier = d1 <= d2 ? 1 : 2;
+      function move(ev) {
+        var x = (ev.clientX - rect.left) * (canvas.width / rect.width);
+        var y = (ev.clientY - rect.top) * (canvas.height / rect.height);
+        var bx = clamp((x - pts.pad) / (pts.w - 2 * pts.pad), -0.5, 1.5);
+        var by = clamp(1 - (y - pts.pad) / (pts.h - 2 * pts.pad), -0.5, 1.5);
+        var b = parseBezier(self.current.timingFunction);
+        if (self.draggingBezier === 1) { b[0] = +bx.toFixed(3); b[1] = +by.toFixed(3); }
+        else { b[2] = +bx.toFixed(3); b[3] = +by.toFixed(3); }
+        self.current.timingFunction = "cubic-bezier(" + b.join(", ") + ")";
+        self.drawBezier();
+      }
+      function up() {
+        self.draggingBezier = null;
+        self.pushHistory();
+        document.removeEventListener("mousemove", move);
+        document.removeEventListener("mouseup", up);
+      }
+      document.addEventListener("mousemove", move);
+      document.addEventListener("mouseup", up);
+    },
+    copyOutput: function() {
+      var self = this;
+      navigator.clipboard.writeText(this.outputText).then(function() {
+        self.showToast("Copied!");
+      }).catch(function() {
+        self.showToast("Copy failed");
+      });
+    },
+    downloadOutput: function() {
+      var ext = this.outputTab === "html" || this.outputTab === "tw" ? "html" : "css";
+      var blob = new Blob([this.outputText], { type: "text/plain" });
+      var a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = this.safeName(this.current.name) + "." + ext;
+      a.click();
+      URL.revokeObjectURL(a.href);
+      this.showToast("Downloaded!");
+    },
+    showToast: function(msg) {
+      var self = this;
+      this.toast = msg;
+      setTimeout(function(){ self.toast = ""; }, 1800);
+    }
+  }
+});
+</script>
+</body>
+</html>
