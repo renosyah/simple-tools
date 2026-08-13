@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SQL Schema Viewer</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;height:100%;overflow:hidden;font-family:system-ui,Arial;background:#080e1a;color:#e5e7eb}
+button,input,textarea{font:inherit}button{border:1px solid #475569;background:#1e293b;color:#e5e7eb;border-radius:7px;padding:8px 11px;cursor:pointer}button:hover{background:#334155}button.primary{background:#2563eb;border-color:#60a5fa}
+.toolbar{height:62px;display:flex;align-items:center;gap:8px;padding:10px 15px;background:#111827;border-bottom:1px solid #334155}.title{font-weight:700}.sub{font-size:10px;color:#64748b}.spacer{flex:1}.search{width:220px;padding:7px 9px;background:#080e1a;border:1px solid #475569;border-radius:6px;color:white}
+.app{height:calc(100% - 62px);display:grid;grid-template-columns:300px 1fr}.side{padding:15px;background:#111827;border-right:1px solid #334155;overflow:auto}.sec{padding-bottom:16px;margin-bottom:16px;border-bottom:1px solid #263449}.st{font-size:13px;font-weight:700;margin-bottom:9px}
+.drop{padding:16px;text-align:center;border:1px dashed #475569;border-radius:8px;background:#0b1220;color:#94a3b8;font-size:11px;cursor:pointer}.drop:hover{border-color:#60a5fa}
+textarea{width:100%;height:170px;resize:vertical;background:#080e1a;color:#e5e7eb;border:1px solid #475569;border-radius:6px;padding:9px;font:11px monospace}input{background:#080e1a;color:white;border:1px solid #475569;border-radius:6px;padding:7px}.row{display:flex;gap:7px;margin-top:8px}.row>*{flex:1}.stat{display:flex;justify-content:space-between;font-size:11px;color:#94a3b8;padding:3px 0}.stat b{color:#e5e7eb}.list{display:flex;flex-direction:column;gap:4px}.item{padding:8px 9px;background:#0b1220;border:1px solid transparent;border-radius:6px;font-size:11px;cursor:pointer}.item:hover,.item.active{background:#172554;border-color:#60a5fa}
+.work{position:relative;overflow:hidden;background:#080e1a}.world{position:absolute;left:0;top:0;width:6000px;height:4000px;transform-origin:0 0;background-image:radial-gradient(circle,rgba(148,163,184,.15) 1px,transparent 1px);background-size:24px 24px}.edges{position:absolute;left:0;top:0;width:6000px;height:4000px;overflow:visible;pointer-events:none;transform-origin:0 0}.node{position:absolute;width:250px;background:#111827;border:1px solid #475569;border-radius:9px;box-shadow:0 10px 25px #0006;overflow:hidden;cursor:grab;user-select:none}.node.sel{border-color:#facc15;box-shadow:0 0 0 2px #facc1533,0 10px 25px #0008}.head{padding:9px 11px;background:#1e293b;border-bottom:1px solid #334155;font-size:12px;font-weight:700}.col{display:grid;grid-template-columns:24px 1fr auto;gap:5px;padding:5px 9px;font-size:10px}.col:hover{background:#172033}.key{color:#facc15;font-size:9px;font-weight:700}.fk{color:#60a5fa}.typ{color:#64748b;font:9px monospace}.notice{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);padding:24px;width:min(520px,80%);text-align:center;color:#64748b;border:1px dashed #475569;border-radius:10px}.hidden{display:none!important}
+@media(max-width:850px){.app{grid-template-columns:240px 1fr}.search{width:150px}}
+</style>
+</head>
+<body>
+<div class="toolbar">
+<div class="title">SQL Schema Viewer</div><div class="sub">MySQL / MariaDB DDL</div><div class="spacer"></div>
+<input id="search" class="search" placeholder="Search table / column..." oninput="search(this.value)">
+<button onclick="zoom(-.1)">−</button><span id="zl">100%</span><button onclick="zoom(.1)">+</button><button onclick="fit()">Fit</button>
+</div>
+<div class="app">
+<aside class="side">
+<div class="sec"><div class="st">Import SQL</div><div id="drop" class="drop">Drop .sql here<br>or click to select</div><input id="file" type="file" accept=".sql,.txt" hidden>
+<div class="row"><button class="primary" onclick="file.click()">Open SQL</button><button onclick="clearAll()">Clear</button></div></div>
+<div class="sec"><div class="st">Paste SQL</div><textarea id="sql" placeholder="CREATE TABLE users (...);"></textarea><div class="row"><button class="primary" onclick="parse(document.getElementById('sql').value)">Visualize Schema</button></div></div>
+<div class="sec"><div class="st">Schema</div><div class="stat">Tables <b id="tc">0</b></div><div class="stat">Columns <b id="cc">0</b></div><div class="stat">Relations <b id="rc">0</b></div></div>
+<div><div class="st">Tables</div><div id="list" class="list">No schema loaded.</div></div>
+</aside>
+<main id="work" class="work">
+<svg id="edges" class="edges" viewBox="0 0 6000 4000" preserveAspectRatio="none"><defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L8,4 L0,8 Z" fill="#60a5fa"/></marker></defs></svg>
+<div id="world" class="world"></div>
+<div id="notice" class="notice"><b>SQL Schema Viewer</b><br>Import or paste CREATE TABLE statements to generate an interactive ER-style diagram.</div>
+</main>
+</div>
+<script>
+const S={tables:new Map(),rels:[],pos:new Map(),sel:null,z:1,px:0,py:0};
+const world=document.getElementById('world'),edges=document.getElementById('edges'),work=document.getElementById('work');
+const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function clean(x){return String(x||'').trim().replace(/^[`"'\[]+|[`"'\]]+$/g,'')}
+function parts(s){let a=[],st=0,d=0,q=null;for(let i=0;i<s.length;i++){let c=s[i];if(q){if(c===q&&s[i-1]!=='\\')q=null;continue}if("'\"`".includes(c)){q=c;continue}if(c==='(')d++;else if(c===')')d--;else if(c===','&&d===0){a.push(s.slice(st,i).trim());st=i+1}}a.push(s.slice(st).trim());return a.filter(Boolean)}
+function cols(s){return parts(s).map(x=>clean(x.split(/\s+/)[0]))}
+function parse(sql){
+ sql=sql.replace(/\/\*[\s\S]*?\*\//g,'').replace(/--[^\r\n]*/g,'').replace(/#[^\r\n]*/g,'');
+ const tables=new Map(),rels=[];
+ const re=/CREATE\s+(?:TEMPORARY\s+)?TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:[`"']?[\w$]+[`"']?\.)?[`"']?([\w$]+)[`"']?\s*\(/gi;let m;
+ while(m=re.exec(sql)){
+  const name=m[1],open=sql.indexOf('(',m.index+m[0].length-1);if(open<0)continue;let d=0,q=null,end=-1;
+  for(let i=open;i<sql.length;i++){let c=sql[i];if(q){if(c===q&&sql[i-1]!=='\\')q=null;continue}if("'\"`".includes(c)){q=c;continue}if(c==='(')d++;if(c===')'&&--d===0){end=i;break}}
+  if(end<0)continue;
+  const t={name,columns:[],pk:[],fk:[]};
+  parts(sql.slice(open+1,end)).forEach(p=>{
+   let x=p.trim(),z;
+   z=x.match(/^(?:CONSTRAINT\s+[`"']?([\w$-]+)[`"']?\s+)?FOREIGN\s+KEY\s*\(([^)]+)\)\s*REFERENCES\s+(?:[`"']?[\w$]+[`"']?\.)?[`"']?([\w$]+)[`"']?\s*\(([^)]+)\)/i);
+   if(z){cols(z[2]).forEach((c,i)=>t.fk.push({c,rt:clean(z[3]),rc:clean(cols(z[4])[i]||cols(z[4])[0])}));return}
+   z=x.match(/^PRIMARY\s+KEY\s*\(([^)]+)\)/i);if(z){t.pk.push(...cols(z[1]));return}
+   if(/^(KEY|INDEX|UNIQUE|FULLTEXT|SPATIAL|CHECK)\b/i.test(x))return;
+   z=x.match(/^[`"']?([\w$]+)[`"']?\s+([A-Za-z]+(?:\s*\([^)]*\))?(?:\s+UNSIGNED)?)/i);if(!z)return;
+   const c=z[1];t.columns.push({name:c,type:z[2],nullable:!(/\bNOT\s+NULL\b/i.test(x))});
+   if(/\bPRIMARY\s+KEY\b/i.test(x))t.pk.push(c);
+   let fk=x.match(/\bREFERENCES\s+(?:[`"']?[\w$]+[`"']?\.)?[`"']?([\w$]+)[`"']?\s*\(\s*[`"']?([\w$]+)[`"']?\s*\)/i);
+   if(fk)t.fk.push({c,rt:clean(fk[1]),rc:clean(fk[2])});
+  });
+  t.pk=[...new Set(t.pk)];tables.set(name,t);
+ }
+ tables.forEach(t=>t.fk.forEach(f=>rels.push({a:t.name,ac:f.c,b:f.rt,bc:f.rc})));
+ S.tables=tables;S.rels=rels;S.sel=null;S.z=1;S.px=0;S.py=0;layout();render();
+}
+function layout(){S.pos.clear();let a=[...S.tables.keys()],n=Math.max(1,Math.ceil(Math.sqrt(a.length)));a.forEach((x,i)=>S.pos.set(x,{x:80+i%n*330,y:70+Math.floor(i/n)*280}))}
+function render(){
+ world.innerHTML='';edges.querySelectorAll('.eg').forEach(x=>x.remove());
+ let i=0;
+ S.tables.forEach(t=>{let p=S.pos.get(t.name),n=document.createElement('div');n.className='node'+(S.sel===t.name?' sel':'');n.dataset.t=t.name;n.style.left=p.x+'px';n.style.top=p.y+'px';
+ n.innerHTML='<div class="head">'+esc(t.name)+'</div>'+t.columns.map(c=>{let pk=t.pk.includes(c.name),fk=t.fk.some(f=>f.c===c.name);return '<div class="col" data-c="'+esc(c.name)+'"><span class="key '+(fk?'fk':'')+'">'+(pk?'PK':fk?'FK':'')+'</span><span>'+esc(c.name)+'</span><span class="typ">'+esc(c.type)+'</span></div>'}).join('');
+ n.onmousedown=e=>drag(e,t.name);n.onclick=e=>{e.stopPropagation();select(t.name)};world.appendChild(n)});
+ S.rels.forEach((r,i)=>edge(r,i));stats();list();transform();document.getElementById('notice').classList.toggle('hidden',S.tables.size>0)
+}
+function node(t){return world.querySelector('.node[data-t="'+CSS.escape(t)+'"]')}
+function point(t,c,side){
+ let n=node(t),p=S.pos.get(t),r=n?.querySelector('.col[data-c="'+CSS.escape(c)+'"]');
+ if(!n)return null;
+ return {
+   x:p.x+(side==='right'?n.offsetWidth:0),
+   y:p.y+(r?r.offsetTop+r.offsetHeight/2:n.offsetHeight/2),
+   side
+ };
+}
+function edge(r,i){
+ let pa=S.pos.get(r.a),pb=S.pos.get(r.b);
+ if(!pa||!pb)return;
+
+ // Always connect from the nearest facing sides of the two tables.
+ // This prevents the FK line from shooting through a table or off toward infinity.
+ const aRight=(pb.x+125)>=(pa.x+125);
+ const aSide=aRight?'right':'left';
+ const bSide=aRight?'left':'right';
+
+ let a=point(r.a,r.ac,aSide),b=point(r.b,r.bc,bSide);
+ if(!a||!b)return;
+
+ let dx=Math.max(60,Math.abs(b.x-a.x)*0.45);
+ let c1x=a.x+(a.side==='right'?dx:-dx);
+ let c2x=b.x+(b.side==='left'?-dx:dx);
+
+ const d=`M ${a.x} ${a.y} C ${c1x} ${a.y}, ${c2x} ${b.y}, ${b.x} ${b.y}`;
+
+ let g=document.createElementNS('http://www.w3.org/2000/svg','g');
+ g.classList.add('eg');
+ g.dataset.relation=i;
+
+ let hit=document.createElementNS('http://www.w3.org/2000/svg','path');
+ hit.setAttribute('d',d);
+ hit.setAttribute('fill','none');
+ hit.setAttribute('stroke','transparent');
+ hit.setAttribute('stroke-width','12');
+ hit.style.pointerEvents='stroke';
+
+ let path=document.createElementNS('http://www.w3.org/2000/svg','path');
+ path.setAttribute('d',d);
+ path.setAttribute('fill','none');
+ path.setAttribute('stroke','#60a5fa');
+ path.setAttribute('stroke-width','2');
+ path.setAttribute('marker-end','url(#arrow)');
+
+ let label=document.createElementNS('http://www.w3.org/2000/svg','text');
+ label.setAttribute('x',(a.x+b.x)/2);
+ label.setAttribute('y',(a.y+b.y)/2-6);
+ label.setAttribute('fill','#94a3b8');
+ label.setAttribute('font-size','9');
+ label.setAttribute('text-anchor','middle');
+ label.textContent=r.a+'.'+r.ac+' → '+r.b+'.'+r.bc;
+
+ g.appendChild(hit);
+ g.appendChild(path);
+ g.appendChild(label);
+ edges.appendChild(g);
+}
+function select(t){S.sel=t;render()}
+function drag(e,t){if(e.button!==0)return;let p=S.pos.get(t),sx=e.clientX,sy=e.clientY,ox=p.x,oy=p.y;function mv(v){p.x=ox+(v.clientX-sx)/S.z;p.y=oy+(v.clientY-sy)/S.z;let n=node(t);n.style.left=p.x+'px';n.style.top=p.y+'px';edges.querySelectorAll('.eg').forEach(x=>x.remove());S.rels.forEach(edge)}function up(){removeEventListener('mousemove',mv);removeEventListener('mouseup',up)}addEventListener('mousemove',mv);addEventListener('mouseup',up)}
+function transform(){world.style.transform=`translate(${S.px}px,${S.py}px) scale(${S.z})`;edges.style.transform=`translate(${S.px}px,${S.py}px) scale(${S.z})`;document.getElementById('zl').textContent=Math.round(S.z*100)+'%'}
+function zoom(d){S.z=Math.max(.25,Math.min(2.5,S.z+d));transform()}
+function fit(){if(!S.tables.size)return;let ps=[...S.pos.values()],mx=Math.max(...ps.map(p=>p.x))+250,my=Math.max(...ps.map(p=>p.y))+260;S.z=Math.max(.25,Math.min(1.2,(work.clientWidth-60)/mx,(work.clientHeight-60)/my));S.px=(work.clientWidth-mx*S.z)/2;S.py=(work.clientHeight-my*S.z)/2;transform()}
+function search(q){q=q.toLowerCase().trim();if(!q){S.sel=null;render();return}let f=[...S.tables.values()].find(t=>t.name.toLowerCase().includes(q)||t.columns.some(c=>c.name.toLowerCase().includes(q)));if(f){S.sel=f.name;render();let p=S.pos.get(f.name);S.px=work.clientWidth/2-(p.x+125)*S.z;S.py=work.clientHeight/2-(p.y+70)*S.z;transform()}}
+function list(){let l=document.getElementById('list');l.innerHTML=S.tables.size?'':'No schema loaded.';S.tables.forEach(t=>{let x=document.createElement('div');x.className='item '+(S.sel===t.name?'active':'');x.textContent=t.name;x.onclick=()=>{select(t.name);let p=S.pos.get(t.name);S.px=work.clientWidth/2-(p.x+125)*S.z;S.py=work.clientHeight/2-(p.y+70)*S.z;transform()};l.appendChild(x)})}
+function stats(){let c=0;S.tables.forEach(t=>c+=t.columns.length);tc.textContent=S.tables.size;cc.textContent=c;rc.textContent=S.rels.length}
+function clearAll(){S.tables.clear();S.rels=[];S.pos.clear();S.sel=null;sql.value='';render()}
+file.onchange=async e=>{let f=e.target.files[0];if(f){sql.value=await f.text();parse(sql.value)}};
+drop.onclick=()=>file.click();drop.ondragover=e=>e.preventDefault();drop.ondrop=async e=>{e.preventDefault();let f=e.dataTransfer.files[0];if(f){sql.value=await f.text();parse(sql.value)}};
+work.onwheel=e=>{if(e.ctrlKey){e.preventDefault();zoom(e.deltaY<0?.1:-.1)}};
+render();
+</script>
+</body>
+</html>
