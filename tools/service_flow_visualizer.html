@@ -1,0 +1,1190 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Service Flow Visualizer</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:#080e1a;color:#e5e7eb;font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif}
+button,input,textarea,select{font:inherit}
+button{border:1px solid #475569;background:#1e293b;color:#e5e7eb;border-radius:7px;padding:7px 10px;cursor:pointer}
+button:hover{background:#334155}
+button.primary{background:#2563eb;border-color:#60a5fa;color:#fff}
+button.danger{background:#7f1d1d;border-color:#991b1b}
+button.small{padding:4px 7px;font-size:11px}
+input,textarea,select{width:100%;background:#080e1a;color:#e5e7eb;border:1px solid #475569;border-radius:6px;padding:7px;outline:none}
+input:focus,textarea:focus,select:focus{border-color:#60a5fa}
+textarea{resize:vertical;font:11px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace}
+
+.toolbar{height:62px;display:flex;align-items:center;gap:7px;padding:10px 14px;background:#111827;border-bottom:1px solid #334155;z-index:20}
+.title{font-weight:750}.sub{font-size:10px;color:#64748b}.spacer{flex:1}
+.mode{font-size:10px;color:#94a3b8;min-width:64px;text-align:center}
+.mode.running{color:#4ade80}.mode.paused{color:#facc15}.mode.complete{color:#93c5fd}.mode.error{color:#f87171}
+.app{height:calc(100vh - 62px);display:grid;grid-template-columns:300px minmax(0,1fr) 310px;min-height:0}
+.sidebar{background:#111827;overflow:auto;padding:14px;border-right:1px solid #334155}
+.right{background:#111827;overflow:auto;padding:14px;border-left:1px solid #334155}
+.section{padding-bottom:15px;margin-bottom:15px;border-bottom:1px solid #263449}
+.section:last-child{border-bottom:0}.st{font-size:12px;font-weight:750;margin-bottom:9px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:7px}.row{display:flex;gap:7px}.row>*{flex:1}
+.label{display:block;font-size:9px;color:#94a3b8;margin:7px 0 4px}
+.hint{font-size:10px;color:#64748b;line-height:1.5}
+.item{display:flex;align-items:center;gap:7px;padding:8px;border-radius:6px;background:#0b1220;border:1px solid transparent;margin-bottom:4px;font-size:11px;cursor:pointer}
+.item:hover,.item.active{border-color:#60a5fa;background:#172554}
+.item button{flex:0 0 auto;margin-left:2px}
+.dot{width:8px;height:8px;border-radius:50%;background:#60a5fa;flex:0 0 auto}
+.dot.db{background:#a78bfa}.dot.external{background:#f59e0b}.dot.queue{background:#34d399}
+.badge{margin-left:auto;font-size:9px;color:#64748b}
+.log{font:10px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;max-height:360px;overflow:auto}
+.logrow{padding:7px 0;border-bottom:1px solid #1e293b}.ok{color:#4ade80}.err{color:#f87171}.warn{color:#facc15}.muted{color:#64748b}
+.workspace{position:relative;overflow:hidden;background:#080e1a;touch-action:none}
+.canvas{position:absolute;left:0;top:0;width:6000px;height:4000px;transform-origin:0 0;pointer-events:none;background-image:radial-gradient(circle,rgba(148,163,184,.14) 1px,transparent 1px);background-size:24px 24px}
+.svg{position:absolute;left:0;top:0;width:6000px;height:4000px;overflow:visible;pointer-events:none;transform-origin:0 0}
+.node{position:absolute;width:220px;min-height:76px;border:1px solid #475569;border-radius:9px;background:#111827;box-shadow:0 12px 28px #0008;cursor:grab;user-select:none;overflow:hidden;pointer-events:auto;transition:border-color .15s,box-shadow .15s}
+.node:active{cursor:grabbing}
+.node.selected{border-color:#facc15;box-shadow:0 0 0 2px #facc1533,0 12px 30px #0009}
+.node.active{border-color:#4ade80;box-shadow:0 0 0 2px #4ade8033,0 0 25px #4ade8022}
+.node.waiting{border-color:#f59e0b;box-shadow:0 0 0 2px #f59e0b33,0 0 25px #f59e0b22}
+.node.error{border-color:#f87171;box-shadow:0 0 0 2px #f8717133,0 0 25px #f8717122}
+.node.cycle{border-color:#f87171;box-shadow:0 0 0 2px #f8717155,0 0 28px #f8717133}
+.nhead{display:flex;align-items:center;gap:8px;padding:9px 10px;background:#1e293b;border-bottom:1px solid #334155;font-size:12px;font-weight:750}
+.nbody{padding:7px 10px;font-size:9px;color:#94a3b8;line-height:1.45}.ntype{color:#64748b;font-size:8px;margin-left:auto}
+.nstatus{font-size:8px;letter-spacing:.04em;text-transform:uppercase;padding:4px 10px 8px;color:#64748b}
+.nstatus.processing{color:#4ade80}.nstatus.waiting{color:#fbbf24}.nstatus.error{color:#f87171}
+.edge-hit{fill:none;stroke:transparent;stroke-width:16;pointer-events:stroke;cursor:pointer}
+.edge-line{fill:none;stroke:#64748b;stroke-width:2}
+.edge-line.active{stroke:#4ade80;stroke-width:3}
+.edge-line.error{stroke:#f87171;stroke-width:3}
+.edge-line.selected{stroke:#facc15;stroke-width:2.5}
+.edge-response{stroke-dasharray:7 5;opacity:.8}
+.edge-label{font-size:9px;paint-order:stroke;stroke:#080e1a;stroke-width:4px;stroke-linejoin:round;pointer-events:none}
+.connection-drag{position:absolute;pointer-events:none;z-index:50}
+.packet{filter:drop-shadow(0 0 6px currentColor)}
+.node.connecting{border-color:#60a5fa;box-shadow:0 0 0 2px #60a5fa44,0 0 25px #60a5fa22}
+.connector{flex:0 0 auto;width:18px;height:18px;border-radius:50%;border:1px solid #60a5fa;background:#172554;color:#93c5fd;display:flex;align-items:center;justify-content:center;font-size:11px;cursor:crosshair}
+.node.connectTarget{border-color:#a78bfa;box-shadow:0 0 0 2px #a78bfa44,0 0 25px #a78bfa22}
+.notice{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;width:min(500px,80%);color:#64748b;border:1px dashed #475569;border-radius:10px;padding:25px;pointer-events:none}
+.notice b{display:block;color:#cbd5e1;margin-bottom:5px}
+.banner{position:absolute;left:50%;top:12px;transform:translateX(-50%);z-index:30;max-width:min(640px,90%);background:#2a0e12;border:1px solid #7f1d1d;color:#fca5a5;padding:10px 14px;border-radius:8px;font-size:12px;line-height:1.45;box-shadow:0 10px 30px #0008}
+.kv{display:grid;grid-template-columns:80px 1fr;gap:5px;font-size:10px;margin:4px 0}.kv b{color:#94a3b8}
+.payload{background:#080e1a;border:1px solid #263449;border-radius:6px;padding:8px;white-space:pre-wrap;word-break:break-word;font:10px/1.45 monospace;max-height:220px;overflow:auto}
+.errorbox{padding:9px;border:1px solid #7f1d1d;background:#2a0e12;border-radius:7px;font-size:10px;color:#fca5a5}
+.hidden{display:none!important}
+.timeline-controls{display:flex;gap:6px}.timeline-controls button{flex:1}
+.range{width:100%;margin-top:8px;accent-color:#2563eb}
+.checkline{display:flex;align-items:center;gap:8px;font-size:11px;color:#cbd5e1;margin-top:8px}
+.checkline input{width:auto}
+@media(max-width:1050px){.app{grid-template-columns:250px minmax(0,1fr)}.right{display:none}}
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="title">Service Flow Visualizer</div>
+  <div class="sub">REST · Webhook · Socket · Database</div>
+  <div class="spacer"></div>
+  <span id="mode" class="mode">Ready</span>
+  <button class="primary" onclick="runFlow()">▶ Run</button>
+  <button onclick="pauseFlow()">⏸ Pause</button>
+  <button onclick="resetFlow()">↻ Reset</button>
+  <button onclick="fitAll()">Fit</button>
+  <button class="small" onclick="changeZoom(-.1)">−</button>
+  <span id="zoomLabel" class="mode">100%</span>
+  <button class="small" onclick="changeZoom(.1)">+</button>
+</div>
+
+<div class="app">
+<aside class="sidebar">
+  <div class="section">
+    <div class="st">Add Node</div>
+    <div class="grid2">
+      <button onclick="addNode('service')">＋ Service</button>
+      <button onclick="addNode('database')">＋ Database</button>
+      <button onclick="addNode('external')">＋ External</button>
+      <button onclick="addNode('queue')">＋ Queue</button>
+    </div>
+    <div class="hint" style="margin-top:8px">Drag nodes on the canvas. Drag the ↗ connector from one node onto another to create a communication.</div>
+  </div>
+
+  <div class="section">
+    <div class="st">Nodes</div>
+    <div id="nodeList"></div>
+  </div>
+
+  <div class="section">
+    <div class="st">Communications</div>
+    <div class="hint">Click a line or a row to edit payload, method, and error simulation.</div>
+    <div id="connectionList" style="margin-top:9px"></div>
+  </div>
+</aside>
+
+<main id="workspace" class="workspace">
+  <svg id="svg" class="svg" viewBox="0 0 6000 4000">
+    <defs>
+      <marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto" markerUnits="userSpaceOnUse">
+        <path d="M0 0 L9 4.5 L0 9 Z" fill="#64748b"/>
+      </marker>
+      <marker id="arrowActive" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto" markerUnits="userSpaceOnUse">
+        <path d="M0 0 L9 4.5 L0 9 Z" fill="#4ade80"/>
+      </marker>
+      <marker id="arrowError" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto" markerUnits="userSpaceOnUse">
+        <path d="M0 0 L9 4.5 L0 9 Z" fill="#f87171"/>
+      </marker>
+      <marker id="arrowSelected" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto" markerUnits="userSpaceOnUse">
+        <path d="M0 0 L9 4.5 L0 9 Z" fill="#facc15"/>
+      </marker>
+    </defs>
+  </svg>
+  <div id="canvas" class="canvas"></div>
+  <div id="notice" class="notice">
+    <b>Service Flow Visualizer</b>
+    Add services, drag ↗ from node to node, then press <b>Run</b>.<br>
+    Requests wait for downstream dependencies before a response is sent upstream.
+  </div>
+  <div id="banner" class="banner hidden"></div>
+</main>
+
+<aside class="right">
+  <div class="section">
+    <div class="st">Inspector</div>
+    <div id="inspector" class="hint">Select a node or communication.</div>
+  </div>
+  <div class="section">
+    <div class="st">Simulation</div>
+    <div class="timeline-controls">
+      <button class="primary" onclick="runFlow()">▶ Run</button>
+      <button onclick="pauseFlow()">⏸ Pause</button>
+      <button onclick="resetFlow()">↻ Reset</button>
+    </div>
+    <input id="timeline" class="range" type="range" min="0" max="100" value="0" oninput="seekFlow(this.value)">
+    <div id="simStatus" class="hint">Ready.</div>
+  </div>
+  <div>
+    <div class="st">Execution Log</div>
+    <div id="log" class="log"><span class="muted">No execution yet.</span></div>
+  </div>
+</aside>
+</div>
+
+<script>
+/* =============================================================================
+   Service Flow Visualizer
+   Frontend-only dependency-graph simulator for service communications.
+   ============================================================================= */
+
+const ERROR_TYPES = [
+  "Invalid payload","HTTP 400","HTTP 401","HTTP 403","HTTP 404",
+  "HTTP 500","Timeout","Connection refused","DB error","Invalid response"
+];
+
+const state = {
+  nodes: new Map(),
+  links: [],
+  positions: new Map(),
+  selected: null,
+  selectedLink: null,
+  zoom: 1, panX: 0, panY: 0,
+  running: false, paused: false, step: 0, timer: null,
+  packet: null,
+  packets: [],
+  logs: [],
+  connecting: null,
+  linkRuntime: new Map(),
+  nodeRuntime: new Map(),
+  contexts: new Map(),
+  executions: new Map(),
+  cycleNodes: new Set(),
+  animToken: 0,
+  hadError: false
+};
+
+const canvas = document.getElementById("canvas");
+const svg = document.getElementById("svg");
+const workspace = document.getElementById("workspace");
+
+/* ---------- helpers ---------- */
+
+function uid(prefix){ return prefix + "_" + Math.random().toString(36).slice(2, 8); }
+function esc(v){ return String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function typeLabel(t){ return ({service:"SERVICE", database:"DATABASE", external:"EXTERNAL API", queue:"QUEUE"})[t] || t; }
+function dotClass(t){ return t === "database" ? "db" : t === "external" ? "external" : t === "queue" ? "queue" : ""; }
+function nodeName(id){ return state.nodes.get(id)?.name || "(deleted)"; }
+function incomingLinks(id){ return state.links.filter(l => l.to === id); }
+function outgoingLinks(id){ return state.links.filter(l => l.from === id); }
+function payloadOf(l){ return l.type === "DATABASE" ? (l.query || l.request || "") : (l.request || l.query || ""); }
+
+function setPos(id, x, y){
+  const p = state.positions.get(id);
+  if(p){ p.x = x; p.y = y; }
+  else state.positions.set(id, {x, y});
+  const n = state.nodes.get(id);
+  if(n){ n.x = x; n.y = y; }
+}
+
+function showBanner(text){
+  const el = document.getElementById("banner");
+  el.textContent = text;
+  el.classList.toggle("hidden", !text);
+}
+
+/* ---------- node management ---------- */
+
+function addNode(type){
+  const id = uid(type);
+  const count = [...state.nodes.values()].filter(n => n.type === type).length + 1;
+  const names = {service:"Service", database:"Database", external:"External API", queue:"Message Queue"};
+  const name = type === "service" ? "Service " + count : (count > 1 ? names[type] + " " + count : names[type]);
+  const x = 120 + (state.nodes.size % 3) * 320;
+  const y = 120 + Math.floor(state.nodes.size / 3) * 220;
+  state.nodes.set(id, {id, name, type, description:"", x, y});
+  setPos(id, x, y);
+  state.selected = id;
+  state.selectedLink = null;
+  state.cycleNodes.clear();
+  showBanner("");
+  render();
+}
+
+function deleteNode(id){
+  if(state.running) resetFlow();
+  state.links = state.links.filter(l => l.from !== id && l.to !== id);
+  state.nodes.delete(id);
+  state.positions.delete(id);
+  state.nodeRuntime.delete(id);
+  if(state.selected === id) state.selected = null;
+  state.cycleNodes.delete(id);
+  render();
+}
+
+function saveNode(){
+  const n = state.nodes.get(state.selected);
+  if(!n) return;
+  n.name = document.getElementById("inName").value.trim() || "Unnamed";
+  n.type = document.getElementById("inType").value;
+  n.description = document.getElementById("inDesc").value;
+  render();
+}
+
+/* ---------- communication management ---------- */
+
+function defaultLinkData(from, to){
+  const toNode = state.nodes.get(to);
+  const isDb = toNode?.type === "database";
+  return {
+    id: uid("link"),
+    from, to,
+    type: isDb ? "DATABASE" : "REST",
+    method: isDb ? "QUERY" : "POST",
+    path: isDb ? "" : "/api/example",
+    request: isDb ? "" : '{\n  "id": 123\n}',
+    query: isDb ? "SELECT *\nFROM users\nWHERE id = 123;" : "",
+    response: isDb ? '{\n  "id": 123,\n  "name": "Reno"\n}' : '{\n  "success": true\n}',
+    simulateError: false,
+    errorType: "Invalid payload",
+    errorMessage: "Payload validation failed.",
+    duration: 900
+  };
+}
+
+function addLink(data){
+  const l = Object.assign(defaultLinkData(data?.from || "", data?.to || ""), data || {});
+  if(!l.id) l.id = uid("link");
+  state.links.push(l);
+  state.selectedLink = l.id;
+  state.selected = null;
+  state.cycleNodes.clear();
+  showBanner("");
+  render();
+}
+
+function openConnection(){
+  if(state.nodes.size < 2){ alert("Add at least two nodes first."); return; }
+  const ids = [...state.nodes.keys()];
+  addLink({from: ids[0], to: ids[1]});
+}
+
+function editLink(id){
+  if(!state.links.some(x => x.id === id)) return;
+  state.selectedLink = id;
+  state.selected = null;
+  render();
+  document.getElementById("inspector")?.scrollIntoView({behavior:"smooth", block:"start"});
+}
+
+function deleteLink(id){
+  if(state.running) resetFlow();
+  state.links = state.links.filter(x => x.id !== id);
+  state.linkRuntime.delete(id);
+  if(state.selectedLink === id) state.selectedLink = null;
+  state.packets = state.packets.filter(p => p.link !== id);
+  render();
+}
+
+function saveLink(){
+  const l = state.links.find(x => x.id === state.selectedLink);
+  if(!l){ state.selectedLink = null; return render(); }
+  const from = document.getElementById("lf").value;
+  const to = document.getElementById("lt").value;
+  if(from === to){ alert("A communication cannot point to the same node."); return; }
+  l.from = from;
+  l.to = to;
+  l.type = document.getElementById("ltype").value;
+  l.method = document.getElementById("method")?.value || l.method;
+  l.path = document.getElementById("path")?.value || l.path;
+  const req = document.getElementById("request").value;
+  if(l.type === "DATABASE") l.query = req; else l.request = req;
+  l.response = document.getElementById("response").value;
+  l.simulateError = document.getElementById("simerr").checked;
+  l.errorType = document.getElementById("errtype").value;
+  l.errorMessage = document.getElementById("errmsg").value;
+  const dur = Number(document.getElementById("ldur")?.value);
+  if(Number.isFinite(dur) && dur >= 200) l.duration = dur;
+  state.cycleNodes.clear();
+  showBanner("");
+  render();
+}
+
+function linkTypeChanged(){
+  const t = document.getElementById("ltype")?.value;
+  if(!t) return;
+  document.getElementById("restFields")?.classList.toggle("hidden", t === "DATABASE");
+  const lab = document.getElementById("reqLabel");
+  if(lab) lab.textContent = t === "DATABASE" ? "SQL Query / Request" : "Request / Query / Message";
+}
+
+/* ---------- geometry: arrows attach to actual node boundaries ---------- */
+
+function nodeRect(id){
+  const el = canvas.querySelector(`.node[data-id="${CSS.escape(id)}"]`);
+  const p = state.positions.get(id);
+  if(!p) return null;
+  const w = el ? el.offsetWidth : 220;
+  const h = el ? el.offsetHeight : 76;
+  return {x:p.x, y:p.y, w, h, cx:p.x + w/2, cy:p.y + h/2};
+}
+
+function pickSides(a, b){
+  const dx = b.cx - a.cx, dy = b.cy - a.cy;
+  if(Math.abs(dx) >= Math.abs(dy)) return dx >= 0 ? ["right","left"] : ["left","right"];
+  return dy >= 0 ? ["bottom","top"] : ["top","bottom"];
+}
+
+function anchor(rect, side, lane){
+  const spread = 11;
+  if(side === "right")  return {x: rect.x + rect.w, y: rect.cy + lane * spread, side};
+  if(side === "left")   return {x: rect.x,          y: rect.cy + lane * spread, side};
+  if(side === "bottom") return {x: rect.cx + lane * spread, y: rect.y + rect.h, side};
+  return {x: rect.cx + lane * spread, y: rect.y, side};
+}
+
+function ctrl(pt, dist){
+  if(pt.side === "right")  return {x: pt.x + dist, y: pt.y};
+  if(pt.side === "left")   return {x: pt.x - dist, y: pt.y};
+  if(pt.side === "bottom") return {x: pt.x, y: pt.y + dist};
+  return {x: pt.x, y: pt.y - dist};
+}
+
+function cubic(a, b, c, d, t){
+  const u = 1 - t;
+  return {
+    x: u*u*u*a.x + 3*u*u*t*b.x + 3*u*t*t*c.x + t*t*t*d.x,
+    y: u*u*u*a.y + 3*u*u*t*b.y + 3*u*t*t*c.y + t*t*t*d.y
+  };
+}
+
+function pathD(p0, p1, p2, p3){
+  return `M ${p0.x} ${p0.y} C ${p1.x} ${p1.y}, ${p2.x} ${p2.y}, ${p3.x} ${p3.y}`;
+}
+
+function linkGeometry(fromId, toId){
+  const a = nodeRect(fromId), b = nodeRect(toId);
+  if(!a || !b) return null;
+  const [fromSide, toSide] = pickSides(a, b);
+  const dist = Math.max(70, Math.hypot(b.cx - a.cx, b.cy - a.cy) * 0.38);
+  const req0 = anchor(a, fromSide, -1);
+  const req3 = anchor(b, toSide, -1);
+  const res0 = anchor(b, toSide, 1);
+  const res3 = anchor(a, fromSide, 1);
+  return {
+    request:  {p0:req0, p1:ctrl(req0, dist), p2:ctrl(req3, dist), p3:req3},
+    response: {p0:res0, p1:ctrl(res0, dist), p2:ctrl(res3, dist), p3:res3}
+  };
+}
+
+/* ---------- rendering ---------- */
+
+function render(){
+  renderNodes();
+  renderLinks();
+  renderLists();
+  renderInspector();
+  updateTransform();
+  document.getElementById("notice").classList.toggle("hidden", state.nodes.size > 0);
+}
+
+function nodeStatusText(id){
+  const s = state.nodeRuntime.get(id);
+  if(s === "processing") return "Processing";
+  if(s === "waiting") return "Waiting for dependency";
+  if(s === "error") return "Error";
+  if(state.cycleNodes.has(id)) return "Cycle";
+  return "";
+}
+
+function renderNodes(){
+  canvas.innerHTML = "";
+  state.nodes.forEach(n => {
+    const p = state.positions.get(n.id);
+    const nr = state.nodeRuntime.get(n.id);
+    const el = document.createElement("div");
+    el.className = "node";
+    if(state.selected === n.id) el.classList.add("selected");
+    if(nr === "processing") el.classList.add("active");
+    if(nr === "waiting") el.classList.add("waiting");
+    if(nr === "error") el.classList.add("error");
+    if(state.cycleNodes.has(n.id)) el.classList.add("cycle");
+    el.dataset.id = n.id;
+    el.style.left = p.x + "px";
+    el.style.top = p.y + "px";
+    const status = nodeStatusText(n.id);
+    el.innerHTML =
+      `<div class="nhead">` +
+        `<span class="dot ${dotClass(n.type)}"></span>` +
+        `<span>${esc(n.name)}</span>` +
+        `<span class="ntype">${typeLabel(n.type)}</span>` +
+        `<span class="connector" title="Drag to another node">↗</span>` +
+      `</div>` +
+      `<div class="nbody">${esc(n.description || "Drag the ↗ connector onto another node to create a communication.")}</div>` +
+      (status ? `<div class="nstatus ${nr || ""}">${esc(status)}</div>` : "");
+    const connector = el.querySelector(".connector");
+    connector.onmousedown = e => beginConnection(e, n.id);
+    el.onmousedown = e => {
+      if(e.button === 0 && (e.ctrlKey || e.shiftKey)) beginConnection(e, n.id);
+      else dragNode(e, n.id);
+    };
+    el.onclick = e => { e.stopPropagation(); state.selected = n.id; state.selectedLink = null; render(); };
+    canvas.appendChild(el);
+  });
+}
+
+function markerFor(active, error, selected){
+  if(error && active) return "url(#arrowError)";
+  if(active) return "url(#arrowActive)";
+  if(selected) return "url(#arrowSelected)";
+  return "url(#arrow)";
+}
+
+function renderLinks(){
+  svg.querySelectorAll(".link").forEach(x => x.remove());
+  state.links.forEach(l => {
+    const geo = linkGeometry(l.from, l.to);
+    if(!geo) return;
+    const rt = state.linkRuntime.get(l.id) || {};
+    const selected = state.selectedLink === l.id;
+    const reqD = pathD(geo.request.p0, geo.request.p1, geo.request.p2, geo.request.p3);
+    const resD = pathD(geo.response.p0, geo.response.p1, geo.response.p2, geo.response.p3);
+
+    const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    g.classList.add("link");
+    g.dataset.id = l.id;
+
+    const hitReq = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    hitReq.setAttribute("d", reqD); hitReq.classList.add("edge-hit");
+    const hitRes = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    hitRes.setAttribute("d", resD); hitRes.classList.add("edge-hit");
+    [hitReq, hitRes].forEach(h => {
+      h.addEventListener("click", e => { e.stopPropagation(); editLink(l.id); });
+      h.addEventListener("dblclick", e => { e.stopPropagation(); editLink(l.id); });
+    });
+
+    const reqPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    reqPath.setAttribute("d", reqD);
+    reqPath.classList.add("edge-line");
+    if(rt.requestActive) reqPath.classList.add(rt.error ? "error" : "active");
+    if(selected) reqPath.classList.add("selected");
+    reqPath.setAttribute("marker-end", markerFor(rt.requestActive, rt.error, selected));
+
+    const resPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    resPath.setAttribute("d", resD);
+    resPath.classList.add("edge-line", "edge-response");
+    if(rt.responseActive) resPath.classList.add(rt.error ? "error" : "active");
+    if(selected) resPath.classList.add("selected");
+    resPath.setAttribute("marker-end", markerFor(rt.responseActive, rt.error, selected));
+
+    const reqMid = cubic(geo.request.p0, geo.request.p1, geo.request.p2, geo.request.p3, 0.5);
+    const resMid = cubic(geo.response.p0, geo.response.p1, geo.response.p2, geo.response.p3, 0.5);
+
+    const reqLabel = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    reqLabel.setAttribute("x", reqMid.x);
+    reqLabel.setAttribute("y", reqMid.y - 8);
+    reqLabel.setAttribute("fill", rt.requestActive ? (rt.error ? "#f87171" : "#4ade80") : (selected ? "#facc15" : "#94a3b8"));
+    reqLabel.classList.add("edge-label");
+    reqLabel.setAttribute("text-anchor", "middle");
+    reqLabel.textContent = "REQUEST";
+
+    const resLabel = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    resLabel.setAttribute("x", resMid.x);
+    resLabel.setAttribute("y", resMid.y + 12);
+    resLabel.setAttribute("fill", rt.responseActive ? (rt.error ? "#f87171" : "#67e8f9") : (selected ? "#facc15" : "#64748b"));
+    resLabel.classList.add("edge-label");
+    resLabel.setAttribute("text-anchor", "middle");
+    resLabel.textContent = "RESPONSE";
+
+    g.append(hitReq, hitRes, reqPath, resPath, reqLabel, resLabel);
+    svg.appendChild(g);
+  });
+  renderPackets();
+}
+
+function renderPacket(){ renderPackets(); }
+
+function renderPackets(){
+  svg.querySelectorAll(".packetGroup").forEach(x => x.remove());
+  (state.packets || []).forEach(p => {
+    const link = state.links.find(x => x.id === p.link);
+    if(!link) return;
+    const geo = linkGeometry(link.from, link.to);
+    if(!geo) return;
+    const curve = p.response ? geo.response : geo.request;
+    const t = Math.max(0, Math.min(1, p.progress));
+    const pt = cubic(curve.p0, curve.p1, curve.p2, curve.p3, t);
+    const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    g.classList.add("packetGroup");
+    const color = p.error ? "#f87171" : (p.response ? "#67e8f9" : "#4ade80");
+    if(p.response){
+      const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+      rect.setAttribute("x", pt.x - 6); rect.setAttribute("y", pt.y - 6);
+      rect.setAttribute("width", "12"); rect.setAttribute("height", "12");
+      rect.setAttribute("rx", "2");
+      rect.setAttribute("fill", color);
+      rect.classList.add("packet");
+      g.appendChild(rect);
+    } else {
+      const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      circle.setAttribute("cx", pt.x); circle.setAttribute("cy", pt.y);
+      circle.setAttribute("r", "7");
+      circle.setAttribute("fill", color);
+      circle.classList.add("packet");
+      g.appendChild(circle);
+    }
+    const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    text.setAttribute("x", pt.x); text.setAttribute("y", pt.y - 12);
+    text.setAttribute("fill", p.error ? "#fca5a5" : (p.response ? "#a5f3fc" : "#bbf7d0"));
+    text.setAttribute("font-size", "9");
+    text.setAttribute("text-anchor", "middle");
+    text.textContent = p.response ? "RESPONSE" : "REQUEST";
+    g.appendChild(text);
+    svg.appendChild(g);
+  });
+}
+
+function renderLists(){
+  const nl = document.getElementById("nodeList");
+  nl.innerHTML = "";
+  state.nodes.forEach(n => {
+    const x = document.createElement("div");
+    x.className = "item" + (state.selected === n.id ? " active" : "");
+    x.innerHTML = `<span class="dot ${dotClass(n.type)}"></span><span>${esc(n.name)}</span><span class="badge">${typeLabel(n.type)}</span>`;
+    x.onclick = () => { state.selected = n.id; state.selectedLink = null; render(); };
+    nl.appendChild(x);
+  });
+  const cl = document.getElementById("connectionList");
+  cl.innerHTML = "";
+  state.links.forEach(l => {
+    const x = document.createElement("div");
+    x.className = "item" + (state.selectedLink === l.id ? " active" : "");
+    const meta = l.type === "REST" ? `${l.type} ${l.method}` : l.type;
+    x.innerHTML =
+      `<span>${esc(meta)}</span>` +
+      `<span style="flex:1">${esc(nodeName(l.from))} → ${esc(nodeName(l.to))}</span>` +
+      `<button class="small" title="Edit communication" onclick="event.stopPropagation();editLink('${l.id}')">✎</button>` +
+      `<button class="small danger" title="Delete communication" onclick="event.stopPropagation();deleteLink('${l.id}')">×</button>`;
+    x.onclick = () => { state.selectedLink = l.id; state.selected = null; render(); };
+    cl.appendChild(x);
+  });
+}
+
+function renderInspector(){
+  const box = document.getElementById("inspector");
+  if(state.selected){
+    const n = state.nodes.get(state.selected);
+    box.innerHTML =
+      `<label class="label">Name</label><input id="inName" value="${esc(n.name)}">` +
+      `<label class="label">Type</label><select id="inType">${["service","database","external","queue"].map(x =>
+        `<option value="${x}" ${n.type===x?"selected":""}>${typeLabel(x)}</option>`).join("")}</select>` +
+      `<label class="label">Description</label><textarea id="inDesc" rows="3">${esc(n.description||"")}</textarea>` +
+      `<div class="row" style="margin-top:8px"><button class="primary" onclick="saveNode()">Save</button>` +
+      `<button class="danger" onclick="deleteNode('${n.id}')">Delete</button></div>`;
+  } else if(state.selectedLink){
+    const l = state.links.find(x => x.id === state.selectedLink);
+    if(!l){ state.selectedLink = null; return renderInspector(); }
+    const opts = [...state.nodes.entries()].map(([id,n]) => `<option value="${id}">${esc(n.name)}</option>`).join("");
+    box.innerHTML =
+      `<label class="label">From</label><select id="lf">${opts}</select>` +
+      `<label class="label">To</label><select id="lt">${opts}</select>` +
+      `<label class="label">Communication Type</label><select id="ltype" onchange="linkTypeChanged()">` +
+        ["REST","WEBHOOK","SOCKET","DATABASE"].map(x => `<option ${l.type===x?"selected":""}>${x}</option>`).join("") +
+      `</select>` +
+      `<div id="restFields">` +
+        `<div class="grid2"><div><label class="label">HTTP Method</label>` +
+        `<select id="method">${["GET","POST","PUT","PATCH","DELETE"].map(x => `<option ${l.method===x?"selected":""}>${x}</option>`).join("")}</select>` +
+        `</div><div><label class="label">Path</label><input id="path" value="${esc(l.path)}"></div></div>` +
+      `</div>` +
+      `<label class="label" id="reqLabel">Request / Query / Message</label>` +
+      `<textarea id="request" rows="6">${esc(payloadOf(l))}</textarea>` +
+      `<label class="label">Response</label><textarea id="response" rows="5">${esc(l.response)}</textarea>` +
+      `<label class="checkline"><input id="simerr" type="checkbox" ${l.simulateError?"checked":""}> Simulate Error</label>` +
+      `<label class="label">Error Type</label><select id="errtype">${ERROR_TYPES.map(x => `<option ${l.errorType===x?"selected":""}>${x}</option>`).join("")}</select>` +
+      `<label class="label">Error Message</label><input id="errmsg" value="${esc(l.errorMessage)}">` +
+      `<label class="label">Duration (ms)</label><input id="ldur" type="number" min="200" max="8000" step="50" value="${esc(l.duration||900)}">` +
+      `<div class="row" style="margin-top:8px"><button class="primary" onclick="saveLink()">Save Communication</button>` +
+      `<button class="danger" onclick="deleteLink('${l.id}')">Delete Communication</button></div>`;
+    document.getElementById("lf").value = l.from;
+    document.getElementById("lt").value = l.to;
+    linkTypeChanged();
+  } else {
+    box.innerHTML = '<div class="hint">Select a node or communication.</div>';
+  }
+}
+
+/* ---------- canvas interaction ---------- */
+
+function dragNode(e, id){
+  if(e.button !== 0) return;
+  e.preventDefault();
+  const startX = e.clientX, startY = e.clientY;
+  const p = state.positions.get(id);
+  const ox = p.x, oy = p.y;
+  let moved = false;
+  function move(v){
+    const dx = (v.clientX - startX) / state.zoom;
+    const dy = (v.clientY - startY) / state.zoom;
+    if(Math.hypot(dx, dy) > 4) moved = true;
+    if(state.connecting) return;
+    const x = ox + dx, y = oy + dy;
+    setPos(id, x, y);
+    const el = canvas.querySelector(`.node[data-id="${CSS.escape(id)}"]`);
+    if(el){ el.style.left = x + "px"; el.style.top = y + "px"; }
+    renderLinks();
+  }
+  function up(){
+    document.removeEventListener("mousemove", move);
+    document.removeEventListener("mouseup", up);
+    if(state.connecting) return;
+    if(moved){
+      document.addEventListener("click", ev => ev.stopPropagation(), {capture:true, once:true});
+    } else {
+      state.selected = id; state.selectedLink = null; render();
+    }
+  }
+  document.addEventListener("mousemove", move);
+  document.addEventListener("mouseup", up);
+}
+
+function beginConnection(e, id){
+  if(e.button !== 0) return;
+  e.preventDefault();
+  e.stopPropagation();
+  state.connecting = {from: id, x: e.clientX, y: e.clientY};
+  const source = canvas.querySelector(`.node[data-id="${CSS.escape(id)}"]`);
+  source?.classList.add("connecting");
+
+  const line = document.createElement("div");
+  line.id = "connectionDragLine";
+  line.className = "connection-drag";
+  line.style.height = "2px";
+  line.style.background = "#60a5fa";
+  line.style.transformOrigin = "0 50%";
+  workspace.appendChild(line);
+
+  function move(v){
+    state.connecting.x = v.clientX;
+    state.connecting.y = v.clientY;
+    document.querySelectorAll(".node.connectTarget").forEach(x => x.classList.remove("connectTarget"));
+    const hovered = document.elementFromPoint(v.clientX, v.clientY)?.closest?.(".node");
+    if(hovered && hovered.dataset.id !== id) hovered.classList.add("connectTarget");
+    const r = workspace.getBoundingClientRect();
+    const src = nodeRect(id);
+    const sx = r.left + ((src ? src.cx : state.positions.get(id).x + 110) * state.zoom) + state.panX;
+    const sy = r.top + ((src ? src.cy : state.positions.get(id).y + 38) * state.zoom) + state.panY;
+    const dx = v.clientX - sx, dy = v.clientY - sy, len = Math.hypot(dx, dy);
+    line.style.left = (sx - r.left) + "px";
+    line.style.top = (sy - r.top) + "px";
+    line.style.width = len + "px";
+    line.style.transform = `rotate(${Math.atan2(dy, dx)}rad)`;
+  }
+  function up(v){
+    document.removeEventListener("mousemove", move);
+    document.removeEventListener("mouseup", up);
+    line.remove();
+    source?.classList.remove("connecting");
+    document.querySelectorAll(".node.connectTarget").forEach(x => x.classList.remove("connectTarget"));
+    const target = document.elementFromPoint(v.clientX, v.clientY)?.closest?.(".node");
+    const to = target?.dataset.id;
+    const from = id;
+    state.connecting = null;
+    if(to && to !== from){
+      if(!state.links.some(l => l.from === from && l.to === to)) addLink({from, to});
+    } else render();
+  }
+  document.addEventListener("mousemove", move);
+  document.addEventListener("mouseup", up);
+}
+
+/* ---------- logging / status ---------- */
+
+function log(text, cls){
+  state.logs.push({text, cls: cls || "", time: new Date().toLocaleTimeString()});
+  const box = document.getElementById("log");
+  box.innerHTML = state.logs.map(x =>
+    `<div class="logrow"><span class="muted">${x.time}</span><br><span class="${x.cls}">${esc(x.text)}</span></div>`
+  ).join("");
+  box.scrollTop = box.scrollHeight;
+}
+
+function setMode(mode, statusText){
+  const el = document.getElementById("mode");
+  el.textContent = mode;
+  el.className = "mode " + ({Ready:"", Running:"running", Paused:"paused", Complete:"complete", Error:"error"}[mode] || "");
+  document.getElementById("simStatus").textContent = statusText || mode;
+}
+
+function setNodeState(id, status){
+  if(!state.nodes.has(id)) return;
+  const prev = state.nodeRuntime.get(id);
+  if(status === "processing" && prev === "error") return;
+  if(status === "waiting" && prev === "error") return;
+  state.nodeRuntime.set(id, status);
+  state.packet = {node: id, error: status === "error"};
+}
+
+/* =============================================================================
+   Simulation engine
+
+   Each incoming communication is processed independently when its request
+   arrives. If A -> B and C -> B both exist, B handles A's request immediately
+   without waiting for C (and vice versa).
+
+   Per-request context:
+     1. Request arrives on link L (A -> B)
+     2. B fires ALL outgoing links in parallel for THIS request only
+     3. B waits until those downstream responses return
+     4. B sends RESPONSE on link L back to A
+
+   Parallel fan-out (A -> B and A -> C) still fires simultaneously from roots.
+   The same outgoing link (e.g. B -> DB) may run multiple times when triggered
+   by separate incoming requests at B.
+   ============================================================================= */
+
+function runFlow(){
+  if(state.running && state.paused){
+    state.paused = false;
+    setMode("Running", "Flow is executing — each request is handled independently.");
+    return;
+  }
+  if(state.running) return;
+  if(!state.links.length){
+    alert("Create at least one communication by dragging the ↗ connector from one node onto another.");
+    return;
+  }
+
+  const cycle = findCycle();
+  if(cycle){
+    state.cycleNodes = new Set(cycle);
+    const path = cycle.map(nodeName).join(" → ");
+    const msg = "Cannot run flow because the communication graph contains a cycle.";
+    setMode("Error", msg + " " + path);
+    showBanner(msg + " Cycle: " + path);
+    document.getElementById("log").innerHTML = "";
+    state.logs = [];
+    log(msg, "err");
+    log("Cycle: " + path, "err");
+    alert(msg + "\n\n" + path);
+    render();
+    return;
+  }
+
+  state.animToken++;
+  state.running = true;
+  state.paused = false;
+  state.step = 0;
+  state.hadError = false;
+  state.logs = [];
+  state.packets = [];
+  state.linkRuntime = new Map();
+  state.nodeRuntime = new Map();
+  state.contexts = new Map();
+  state.executions = new Map();
+  state.cycleNodes.clear();
+  showBanner("");
+  state.links.forEach(l => state.linkRuntime.set(l.id, {
+    requestSent:false, requestReceived:false, responseSent:false, responseReceived:false,
+    requestActive:false, responseActive:false, error:false
+  }));
+  setMode("Running", "Flow is executing — each request is handled independently.");
+  document.getElementById("log").innerHTML = "";
+  document.getElementById("timeline").value = 0;
+
+  // Roots have no incoming communications — fire all outgoing in parallel.
+  state.nodes.forEach((_, id) => {
+    if(!incomingLinks(id).length) fireRootOutgoing(id);
+  });
+  render();
+}
+
+function findCycle(){
+  const adj = new Map();
+  state.nodes.forEach((_, id) => adj.set(id, []));
+  state.links.forEach(l => adj.get(l.from)?.push(l.to));
+  const visiting = new Set(), visited = new Set(), stack = [];
+  function dfs(id){
+    if(visiting.has(id)){
+      const i = stack.indexOf(id);
+      return stack.slice(i).concat(id);
+    }
+    if(visited.has(id)) return null;
+    visiting.add(id); stack.push(id);
+    for(const to of adj.get(id) || []){ const c = dfs(to); if(c) return c; }
+    stack.pop(); visiting.delete(id); visited.add(id);
+    return null;
+  }
+  for(const id of adj.keys()){ const c = dfs(id); if(c) return c; }
+  return null;
+}
+
+function requestMeta(l){
+  if(l.type === "REST") return `REQUEST ${l.type} ${l.method} ${l.path || ""}`.trim();
+  if(l.type === "DATABASE") return "REQUEST DATABASE";
+  return "REQUEST " + l.type;
+}
+
+function getLink(linkId){ return state.links.find(l => l.id === linkId); }
+
+function patchLinkVisual(linkId, patch){
+  const rt = state.linkRuntime.get(linkId);
+  if(!rt) return;
+  Object.assign(rt, patch);
+}
+
+function fireRootOutgoing(nodeId){
+  if(!state.running) return;
+  const outs = outgoingLinks(nodeId);
+  if(!outs.length) return;
+  setNodeState(nodeId, "processing");
+  log(nodeName(nodeId) + " firing " + outs.length + " communication" + (outs.length > 1 ? "s" : "") + " in parallel", "warn");
+  outs.forEach(l => startExecution(l, null));
+}
+
+/* Start a single request leg. parentContextId=null for root fan-out. */
+function startExecution(link, parentContextId){
+  const execId = uid("exec");
+  state.executions.set(execId, {
+    id: execId,
+    linkId: link.id,
+    parentContextId,
+    requestActive: true,
+    requestReceived: false,
+    responseReceived: false,
+    error: false
+  });
+  patchLinkVisual(link.id, {requestSent: true, requestActive: true});
+  setNodeState(link.from, "processing");
+  state.packets.push({
+    id: uid("packet"), execId, link: link.id,
+    from: link.from, to: link.to,
+    progress: 0, response: false, error: false
+  });
+  log(nodeName(link.from) + " → " + nodeName(link.to) + "  " + requestMeta(link), "ok");
+  const body = payloadOf(link);
+  if(body) log(body, "muted");
+  animateExecution(execId, false, () => {
+    const exec = state.executions.get(execId);
+    exec.requestActive = false;
+    exec.requestReceived = true;
+    patchLinkVisual(link.id, {requestActive: false, requestReceived: true});
+    state.packets = state.packets.filter(p => p.execId !== execId || p.response);
+    onExecutionRequestArrived(execId);
+  });
+  return execId;
+}
+
+function onExecutionRequestArrived(execId){
+  if(!state.running) return;
+  const exec = state.executions.get(execId);
+  const link = getLink(exec.linkId);
+  if(!link) return;
+  beginContext(link, execId);
+  render();
+}
+
+/* Process one incoming request immediately — do not wait for other incoming links. */
+function beginContext(incomingLink, sourceExecId){
+  const ctxId = uid("ctx");
+  const ctx = {
+    id: ctxId,
+    incomingLinkId: incomingLink.id,
+    sourceExecId,
+    pendingExecs: new Set(),
+    error: false,
+    responded: false
+  };
+  state.contexts.set(ctxId, ctx);
+  const nodeId = incomingLink.to;
+
+  if(incomingLink.simulateError){
+    ctx.error = true;
+    state.hadError = true;
+    setNodeState(nodeId, "error");
+    log(nodeName(nodeId) + " ERROR: " + incomingLink.errorType, "err");
+    log(incomingLink.errorMessage || "Request failed.", "err");
+    startContextResponse(ctxId, true);
+    return;
+  }
+
+  setNodeState(nodeId, "processing");
+  log(nodeName(nodeId) + " received REQUEST from " + nodeName(incomingLink.from), "ok");
+  if(incomingLink.type === "DATABASE"){
+    const q = payloadOf(incomingLink);
+    if(q) log("Query:\n" + q, "muted");
+  }
+
+  const outs = outgoingLinks(nodeId);
+  if(!outs.length){
+    startContextResponse(ctxId, false);
+    return;
+  }
+
+  setNodeState(nodeId, "waiting");
+  log(nodeName(nodeId) + " firing " + outs.length + " downstream communication" + (outs.length > 1 ? "s" : "") + " in parallel", "warn");
+  outs.forEach(out => {
+    const childExecId = startExecution(out, ctxId);
+    if(childExecId) ctx.pendingExecs.add(childExecId);
+  });
+  if(!ctx.pendingExecs.size){
+    startContextResponse(ctxId, false);
+  }
+}
+
+function startContextResponse(ctxId, error){
+  const ctx = state.contexts.get(ctxId);
+  if(!ctx || ctx.responded) return;
+  ctx.responded = true;
+  if(error) ctx.error = true;
+  const link = getLink(ctx.incomingLinkId);
+  if(!link) return;
+  patchLinkVisual(link.id, {responseSent: true, responseActive: true, error: !!error});
+  setNodeState(link.to, error ? "error" : "processing");
+  log(nodeName(link.to) + " → " + nodeName(link.from) + "  RESPONSE " + (error ? "ERROR" : "OK"), error ? "err" : "ok");
+  if(!error && link.response) log(link.response, "muted");
+  state.packets.push({
+    id: uid("packet"), execId: ctx.sourceExecId, link: link.id,
+    from: link.to, to: link.from,
+    progress: 0, response: true, error: !!error
+  });
+  animateExecution(ctx.sourceExecId, true, () => {
+    patchLinkVisual(link.id, {responseActive: false, responseReceived: true});
+    state.packets = state.packets.filter(p => !(p.execId === ctx.sourceExecId && p.response));
+    completeExecution(ctx.sourceExecId, error);
+    updateTimeline();
+    checkFinish();
+    render();
+  });
+}
+
+function completeExecution(execId, error){
+  const exec = state.executions.get(execId);
+  if(!exec || exec.responseReceived) return;
+  exec.responseReceived = true;
+  if(error) exec.error = true;
+  const link = getLink(exec.linkId);
+  if(link){
+    setNodeState(link.from, error ? "error" : "processing");
+    log(nodeName(link.from) + " received " + (error ? "ERROR response" : "RESPONSE"), error ? "err" : "ok");
+    if(!exec.parentContextId && outgoingLinks(link.from).some(l => {
+      const e = [...state.executions.values()].find(x => x.linkId === l.id && !x.responseReceived);
+      return !!e;
+    })){
+      setNodeState(link.from, "waiting");
+    }
+  }
+  if(exec.parentContextId){
+    const parent = state.contexts.get(exec.parentContextId);
+    if(parent){
+      if(error) parent.error = true;
+      parent.pendingExecs.delete(execId);
+      if(parent.pendingExecs.size === 0 && !parent.responded){
+        startContextResponse(parent.id, parent.error);
+      }
+    }
+  }
+}
+
+/* ---------- packet animation ---------- */
+
+function animateExecution(execId, response, done){
+  const exec = state.executions.get(execId);
+  if(!exec) return;
+  const link = getLink(exec.linkId);
+  if(!link) return;
+  const token = state.animToken;
+  const duration = link.duration || 900;
+  const packet = state.packets.find(p => p.execId === execId && p.response === response);
+  let start = performance.now();
+  let pauseAccum = 0;
+  let pausedAt = 0;
+  function frame(now){
+    if(token !== state.animToken || !state.running) return;
+    if(state.paused){
+      if(!pausedAt) pausedAt = now;
+      requestAnimationFrame(frame);
+      return;
+    }
+    if(pausedAt){
+      pauseAccum += now - pausedAt;
+      pausedAt = 0;
+    }
+    const elapsed = now - start - pauseAccum;
+    if(packet) packet.progress = Math.min(1, elapsed / duration);
+    renderLinks();
+    if(!packet || elapsed >= duration){
+      if(packet) packet.progress = 1;
+      done();
+    } else {
+      requestAnimationFrame(frame);
+    }
+  }
+  requestAnimationFrame(frame);
+}
+
+function updateTimeline(){
+  const execs = [...state.executions.values()];
+  const total = Math.max(1, execs.length);
+  const done = execs.filter(e => e.responseReceived).length;
+  document.getElementById("timeline").value = Math.round(done / total * 100);
+}
+
+function checkFinish(){
+  if(!state.running) return;
+  const execs = [...state.executions.values()];
+  if(execs.length && execs.every(e => e.responseReceived)){
+    setTimeout(() => {
+      if(state.running && [...state.executions.values()].every(e => e.responseReceived)) finishFlow();
+    }, 280);
+  }
+}
+
+function pauseFlow(){
+  if(!state.running) return;
+  state.paused = !state.paused;
+  setMode(state.paused ? "Paused" : "Running",
+    state.paused ? "Simulation paused." : "Flow is executing — each request is handled independently.");
+}
+
+function resetFlow(){
+  state.animToken++;
+  state.running = false;
+  state.paused = false;
+  state.step = 0;
+  state.packet = null;
+  state.packets = [];
+  state.linkRuntime = new Map();
+  state.nodeRuntime = new Map();
+  state.contexts = new Map();
+  state.executions = new Map();
+  state.cycleNodes.clear();
+  state.hadError = false;
+  state.logs = [];
+  showBanner("");
+  setMode("Ready", "Ready.");
+  document.getElementById("timeline").value = 0;
+  document.getElementById("log").innerHTML = '<span class="muted">No execution yet.</span>';
+  render();
+}
+
+function finishFlow(){
+  state.running = false;
+  state.paused = false;
+  state.packets = [];
+  updateTimeline();
+  if(state.hadError){
+    setMode("Error", "Flow finished with errors. Dependency order was still respected.");
+  } else {
+    setMode("Complete", "Flow completed — all request/response cycles finished.");
+  }
+  render();
+}
+
+function seekFlow(v){
+  if(state.running) return;
+  document.getElementById("simStatus").textContent = "Timeline position: " + v + "%";
+}
+
+/* ---------- zoom / pan ---------- */
+
+function updateTransform(){
+  const t = `translate(${state.panX}px,${state.panY}px) scale(${state.zoom})`;
+  canvas.style.transform = t;
+  svg.style.transform = t;
+  document.getElementById("zoomLabel").textContent = Math.round(state.zoom * 100) + "%";
+}
+
+function changeZoom(d, event){
+  const old = state.zoom;
+  state.zoom = Math.max(0.25, Math.min(2.5, +(old + d).toFixed(2)));
+  if(event){
+    const r = workspace.getBoundingClientRect();
+    const mx = event.clientX - r.left;
+    const my = event.clientY - r.top;
+    const k = state.zoom / old;
+    state.panX = mx - (mx - state.panX) * k;
+    state.panY = my - (my - state.panY) * k;
+  }
+  updateTransform();
+}
+
+function fitAll(){
+  if(!state.nodes.size) return;
+  const ps = [...state.positions.values()];
+  const minX = Math.min(...ps.map(p => p.x)) - 40;
+  const minY = Math.min(...ps.map(p => p.y)) - 40;
+  const maxX = Math.max(...ps.map(p => p.x)) + 260;
+  const maxY = Math.max(...ps.map(p => p.y)) + 170;
+  const w = Math.max(1, maxX - minX);
+  const h = Math.max(1, maxY - minY);
+  state.zoom = Math.max(0.25, Math.min(1.2, (workspace.clientWidth - 80) / w, (workspace.clientHeight - 80) / h));
+  state.panX = (workspace.clientWidth - w * state.zoom) / 2 - minX * state.zoom;
+  state.panY = (workspace.clientHeight - h * state.zoom) / 2 - minY * state.zoom;
+  updateTransform();
+}
+
+workspace.addEventListener("wheel", e => {
+  e.preventDefault();
+  changeZoom(e.deltaY < 0 ? 0.1 : -0.1, e);
+}, {passive:false});
+
+let space = false;
+document.addEventListener("keydown", e => {
+  if(e.code === "Space" && document.activeElement.tagName !== "INPUT" && document.activeElement.tagName !== "TEXTAREA"){
+    space = true; e.preventDefault();
+  }
+});
+document.addEventListener("keyup", e => { if(e.code === "Space") space = false; });
+
+workspace.addEventListener("mousedown", e => {
+  if(e.button === 1 || space){
+    const sx = e.clientX, sy = e.clientY, px = state.panX, py = state.panY;
+    function mv(v){ state.panX = px + v.clientX - sx; state.panY = py + v.clientY - sy; updateTransform(); }
+    function up(){ removeEventListener("mousemove", mv); removeEventListener("mouseup", up); }
+    addEventListener("mousemove", mv); addEventListener("mouseup", up);
+    return;
+  }
+  if(e.target.closest?.(".edge-hit") || e.target.closest?.(".node")) return;
+  if(e.target === workspace || e.target === canvas || e.target === svg || e.target.closest?.(".notice")){
+    state.selected = null; state.selectedLink = null; render();
+  }
+});
+
+render();
+</script>
+</body>
+</html>
