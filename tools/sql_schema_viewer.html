@@ -8,26 +8,44 @@
 <script src="shared/vue-canvas-viewport.js"></script>
 <style>
 *{box-sizing:border-box}html,body{margin:0;height:100%;overflow:hidden;font-family:system-ui,Arial;background:#080e1a;color:#e5e7eb}
-button,input,textarea{font:inherit}button{border:1px solid #475569;background:#1e293b;color:#e5e7eb;border-radius:7px;padding:8px 11px;cursor:pointer}button:hover{background:#334155}button.primary{background:#2563eb;border-color:#60a5fa}
-.toolbar{height:62px;display:flex;align-items:center;gap:8px;padding:10px 15px;background:#111827;border-bottom:1px solid #334155}.title{font-weight:700}.sub{font-size:10px;color:#64748b}.spacer{flex:1}.search{width:220px;padding:7px 9px;background:#080e1a;border:1px solid #475569;border-radius:6px;color:white}
-.app{height:calc(100% - 62px);display:grid;grid-template-columns:300px 1fr}.side{padding:15px;background:#111827;border-right:1px solid #334155;overflow:auto}.sec{padding-bottom:16px;margin-bottom:16px;border-bottom:1px solid #263449}.st{font-size:13px;font-weight:700;margin-bottom:9px}
-.drop{padding:16px;text-align:center;border:1px dashed #475569;border-radius:8px;background:#0b1220;color:#94a3b8;font-size:11px;cursor:pointer}.drop:hover{border-color:#60a5fa}
-textarea{width:100%;height:170px;resize:vertical;background:#080e1a;color:#e5e7eb;border:1px solid #475569;border-radius:6px;padding:9px;font:11px monospace}input{background:#080e1a;color:white;border:1px solid #475569;border-radius:6px;padding:7px}.row{display:flex;gap:7px;margin-top:8px}.row>*{flex:1}.stat{display:flex;justify-content:space-between;font-size:11px;color:#94a3b8;padding:3px 0}.stat b{color:#e5e7eb}.list{display:flex;flex-direction:column;gap:4px}.item{padding:8px 9px;background:#0b1220;border:1px solid transparent;border-radius:6px;font-size:11px;cursor:pointer}.item:hover,.item.active{background:#172554;border-color:#60a5fa}
-.work{position:relative;overflow:hidden;background:#080e1a;touch-action:none}.world{position:absolute;left:0;top:0;width:6000px;height:4000px;transform-origin:0 0;background-image:radial-gradient(circle,rgba(148,163,184,.15) 1px,transparent 1px);background-size:24px 24px}.edges{position:absolute;left:0;top:0;width:6000px;height:4000px;overflow:visible;pointer-events:none;transform-origin:0 0}.node{position:absolute;width:250px;background:#111827;border:1px solid #475569;border-radius:9px;box-shadow:0 10px 25px #0006;overflow:hidden;cursor:grab;user-select:none;pointer-events:auto}.node.sel{border-color:#facc15;box-shadow:0 0 0 2px #facc1533,0 10px 25px #0008}.head{padding:9px 11px;background:#1e293b;border-bottom:1px solid #334155;font-size:12px;font-weight:700}.col{display:grid;grid-template-columns:24px 1fr auto;gap:5px;padding:5px 9px;font-size:10px}.col:hover{background:#172033}.key{color:#facc15;font-size:9px;font-weight:700}.fk{color:#60a5fa}.typ{color:#64748b;font:9px monospace}.notice{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);padding:24px;width:min(520px,80%);text-align:center;color:#64748b;border:1px dashed #475569;border-radius:10px;pointer-events:none}.hint{font-size:10px;color:#64748b;margin-top:6px}
-@media(max-width:850px){.app{grid-template-columns:240px 1fr}.search{width:150px}}
+#app{display:flex;flex-direction:column;height:100%;overflow:hidden}
+button,input,textarea,select{font:inherit}button{border:1px solid #475569;background:#1e293b;color:#e5e7eb;border-radius:7px;padding:8px 11px;cursor:pointer}button:hover{background:#334155}button.primary{background:#2563eb;border-color:#60a5fa}button:disabled{opacity:.45;cursor:not-allowed}
+.toolbar{height:62px;display:flex;align-items:center;gap:8px;padding:10px 15px;background:#111827;border-bottom:1px solid #334155;flex-shrink:0}.title{font-weight:700}.sub{font-size:10px;color:#64748b}.spacer{flex:1}.search{width:220px;padding:7px 9px;background:#080e1a;border:1px solid #475569;border-radius:6px;color:white}
+.app{flex:1;min-height:0;display:grid;grid-template-columns:320px 1fr;grid-template-rows:minmax(0,1fr);overflow:hidden}.side{padding:12px;background:#111827;border-right:1px solid #334155;overflow:auto;display:flex;flex-direction:column;gap:0}.sec{padding-bottom:12px;margin-bottom:12px;border-bottom:1px solid #263449}.st{font-size:13px;font-weight:700;margin-bottom:8px}
+.tabs{display:flex;gap:4px;margin-bottom:10px}.tab{flex:1;padding:7px 6px;font-size:10px;text-align:center;border:1px solid #334155;border-radius:6px;background:#0b1220;cursor:pointer}.tab.active{background:#172554;border-color:#60a5fa;color:#93c5fd}
+.drop{padding:14px;text-align:center;border:1px dashed #475569;border-radius:8px;background:#0b1220;color:#94a3b8;font-size:11px;cursor:pointer}.drop:hover{border-color:#60a5fa}
+textarea{width:100%;resize:vertical;background:#080e1a;color:#e5e7eb;border:1px solid #475569;border-radius:6px;padding:9px;font:11px monospace}input,select{background:#080e1a;color:white;border:1px solid #475569;border-radius:6px;padding:7px}.row{display:flex;gap:7px;margin-top:8px;flex-wrap:wrap}.row>*{flex:1;min-width:0}.stat{display:flex;justify-content:space-between;font-size:11px;color:#94a3b8;padding:3px 0}.stat b{color:#e5e7eb}.list{display:flex;flex-direction:column;gap:4px;max-height:160px;overflow:auto}.item{padding:8px 9px;background:#0b1220;border:1px solid transparent;border-radius:6px;font-size:11px;cursor:pointer}.item:hover,.item.active{background:#172554;border-color:#60a5fa}
+.main{position:relative;height:100%;min-height:0;min-width:0;overflow:hidden}.main-top{position:absolute;inset:0;overflow:hidden;background:#080e1a;touch-action:none}
+.float-win{position:absolute;display:flex;flex-direction:column;overflow:hidden;min-width:300px;min-height:140px;background:#0f172a;border:1px solid #475569;border-radius:10px;box-shadow:0 18px 48px #000a,0 0 0 1px #33415555}.float-win-head{padding:8px 12px;background:#111827;border-bottom:1px solid #334155;display:flex;align-items:center;gap:8px;cursor:move;user-select:none;flex-shrink:0}.float-win-title{font-size:12px;font-weight:700;flex:1}.float-win-actions{display:flex;gap:4px}.float-win-actions button{padding:3px 8px;font-size:11px;cursor:pointer}.float-win-body{padding:10px 12px;overflow:auto;flex:1;min-height:0;display:flex;flex-direction:column}.float-resize-r,.float-resize-b,.float-resize-br{position:absolute;z-index:2}.float-resize-r{top:0;right:0;width:6px;height:100%;cursor:ew-resize}.float-resize-b{left:0;bottom:0;width:100%;height:6px;cursor:ns-resize}.float-resize-br{right:0;bottom:0;width:14px;height:14px;cursor:nwse-resize;background:linear-gradient(135deg,transparent 50%,#64748b 50%,#64748b 58%,transparent 58%)}
+.panel-toggle-hint{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);z-index:5;padding:6px 12px;background:#111827cc;border:1px solid #475569;border-radius:8px;font-size:11px;color:#94a3b8;cursor:pointer;backdrop-filter:blur(4px)}.panel-toggle-hint:hover{border-color:#60a5fa;color:#e5e7eb}
+.world{position:absolute;left:0;top:0;width:6000px;height:4000px;transform-origin:0 0;background-image:radial-gradient(circle,rgba(148,163,184,.15) 1px,transparent 1px);background-size:24px 24px}.edges{position:absolute;left:0;top:0;width:6000px;height:4000px;overflow:visible;pointer-events:none;transform-origin:0 0}.node{position:absolute;width:250px;background:#111827;border:1px solid #475569;border-radius:9px;box-shadow:0 10px 25px #0006;overflow:hidden;cursor:grab;user-select:none;pointer-events:auto;transition:border-color .25s,box-shadow .25s,opacity .25s}.node.sel{border-color:#facc15;box-shadow:0 0 0 2px #facc1533,0 10px 25px #0008}.node.q-active{border-color:#4ade80;box-shadow:0 0 0 2px #4ade8033,0 10px 25px #0008}.node.q-dim{opacity:.35}.head{padding:9px 11px;background:#1e293b;border-bottom:1px solid #334155;font-size:12px;font-weight:700;display:flex;justify-content:space-between;align-items:center}.q-badge{font-size:8px;padding:2px 6px;border-radius:4px;background:#166534;color:#86efac;text-transform:uppercase;letter-spacing:.04em}
+.col{display:grid;grid-template-columns:24px 1fr auto;gap:5px;padding:5px 9px;font-size:10px;transition:background .2s}.col:hover{background:#172033}.col.q-col-sel{background:#14532d}.col.q-col-join{background:#1e3a5f}.col.q-col-where{background:#422006}.key{color:#facc15;font-size:9px;font-weight:700}.fk{color:#60a5fa}.typ{color:#64748b;font:9px monospace}.notice{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);padding:24px;width:min(520px,80%);text-align:center;color:#64748b;border:1px dashed #475569;border-radius:10px;pointer-events:none}.hint{font-size:10px;color:#64748b;margin-top:6px}
+.edge-path{fill:none;stroke:#60a5fa;stroke-width:2;transition:stroke .25s,stroke-width .25s}.edge-path.q-active{stroke:#4ade80;stroke-width:3;filter:drop-shadow(0 0 4px #4ade8066)}.edge-path.q-dim{stroke:#334155;opacity:.4}
+.panel-head{padding:8px 12px;border-bottom:1px solid #334155;display:flex;align-items:center;gap:8px;flex-shrink:0;background:#111827}.panel-head .st{margin:0;flex:1}.panel-body{padding:10px 12px;overflow:auto;flex:1}
+.checkline{display:flex;align-items:center;gap:6px;font-size:11px;margin:4px 0;cursor:pointer}.checkline input{margin:0}
+.label{font-size:10px;color:#94a3b8;margin:8px 0 4px;display:block}.seed-table{margin-bottom:14px;border:1px solid #334155;border-radius:8px;overflow:hidden}.seed-table h4{margin:0;padding:8px 10px;background:#1e293b;font-size:11px}.data-wrap{overflow:auto;max-height:220px}.data-table{width:100%;border-collapse:collapse;font:10px monospace}.data-table th,.data-table td{padding:4px 8px;border-bottom:1px solid #263449;text-align:left;white-space:nowrap}.data-table th{background:#0b1220;color:#94a3b8;position:sticky;top:0}.data-table tr.row-sel td{background:#14532d}.data-table tr.row-reject td{background:#450a0a;opacity:.7;text-decoration:line-through}.data-table tr.row-invalid td{background:#422006}.data-table td.col-hl{background:#1e3a5f}.data-table td.col-sel{background:#166534}.invalid-tag{color:#fb923c;font-size:9px;margin-left:4px}
+.q-editor{height:120px;margin-bottom:8px}.error-box{background:#450a0a;border:1px solid #f87171;border-radius:8px;padding:10px;margin:8px 0;font-size:11px;color:#fecaca}.error-box b{color:#f87171;display:block;margin-bottom:4px}.sim-note{font-size:10px;color:#64748b;font-style:italic;margin:4px 0}
+.playback{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:8px 0}.playback button{padding:6px 10px;font-size:11px}.speed-btns{display:flex;gap:3px}.speed-btns button{padding:4px 8px;font-size:10px}.speed-btns button.on{background:#2563eb;border-color:#60a5fa}.stage-info{font-size:11px;color:#94a3b8;margin:4px 0}
+.pipeline-wrap{overflow-x:auto;padding:8px 0}.pipeline{display:flex;align-items:flex-start;gap:0;min-width:min-content;padding:4px 0}.pstage{min-width:140px;max-width:180px;border:1px solid #334155;border-radius:8px;background:#111827;cursor:pointer;transition:border-color .2s,box-shadow .2s;flex-shrink:0}.pstage.active{border-color:#60a5fa;box-shadow:0 0 0 2px #60a5fa33}.pstage.done{border-color:#4ade80}.pstage-head{padding:6px 8px;background:#1e293b;font-size:10px;font-weight:700;border-radius:7px 7px 0 0}.pstage-body{padding:6px 8px;font-size:9px;color:#94a3b8;min-height:48px;max-height:120px;overflow:auto}.parrow{display:flex;align-items:center;padding:0 2px;color:#64748b;font-size:16px;flex-shrink:0;padding-top:18px}
+.row-chip{display:inline-block;margin:2px;padding:2px 5px;border-radius:4px;background:#1e293b;border:1px solid #475569;font-size:8px;font-family:monospace;white-space:nowrap;transition:transform .35s ease,opacity .35s}.row-chip.flow{transform:translateY(-4px);border-color:#4ade80;background:#14532d}.row-chip.reject{opacity:.3;border-color:#f87171;background:#450a0a;text-decoration:line-through}.row-chip.join{background:#1e3a5f;border-color:#60a5fa}
+.stage-detail{background:#0b1220;border:1px solid #334155;border-radius:8px;padding:10px;margin-top:8px;font-size:11px}.stage-detail h5{margin:0 0 6px;font-size:11px;color:#93c5fd}.stage-detail pre{margin:4px 0;font:10px monospace;color:#cbd5e1;white-space:pre-wrap}
+.data-tabs{display:flex;gap:4px;margin-bottom:8px}.data-tabs button{padding:5px 10px;font-size:10px}.data-tabs button.on{background:#2563eb;border-color:#60a5fa}
+.join-viz{margin:8px 0;padding:8px;background:#0b1220;border-radius:6px;font:10px monospace;text-align:center}.join-line{color:#4ade80}
+@media(max-width:900px){.app{grid-template-columns:260px 1fr}.search{width:140px}}
 </style>
 </head>
 <body>
 <div id="app">
 <div class="toolbar">
   <div class="title">SQL Schema Viewer</div>
-  <div class="sub">MySQL / MariaDB DDL</div>
+  <div class="sub">Schema · Seed · Query Simulation</div>
   <div class="spacer"></div>
   <input class="search" v-model="searchQuery" placeholder="Search table / column..." @input="onSearch">
   <button @click="vpZoomBy(-0.1)">−</button>
   <span>{{ vpZoomLabel }}</span>
   <button @click="vpZoomBy(0.1)">+</button>
   <button @click="fitView">Fit</button>
+  <button @click="toggleDataWin">{{ winVisible ? "Hide Panel" : "Show Panel" }}</button>
 </div>
 <div class="app">
 <aside class="side">
@@ -39,53 +57,615 @@ textarea{width:100%;height:170px;resize:vertical;background:#080e1a;color:#e5e7e
   </div>
   <div class="sec">
     <div class="st">Paste SQL</div>
-    <textarea v-model="sqlText" placeholder="CREATE TABLE users (...);"></textarea>
-    <div class="row"><button class="primary" @click="parseSql(sqlText)">Visualize Schema</button></div>
+    <textarea v-model="sqlText" rows="5" placeholder="CREATE TABLE users (...);"></textarea>
+    <div class="row"><button class="primary" @click="parseSql(sqlText)">Visualize Schema</button><button @click="loadExampleSchema">Example</button></div>
   </div>
-  <div class="sec">
-    <div class="st">Schema</div>
+  <div class="tabs">
+    <div class="tab" :class="{active: sideTab==='schema'}" @click="sideTab='schema'">Schema</div>
+    <div class="tab" :class="{active: sideTab==='seed'}" @click="sideTab='seed'">Seed Data</div>
+    <div class="tab" :class="{active: sideTab==='query'}" @click="sideTab='query'">Query</div>
+  </div>
+
+  <div v-show="sideTab==='schema'" class="sec" style="border:none;margin:0;padding:0">
     <div class="stat">Tables <b>{{ tableCount }}</b></div>
     <div class="stat">Columns <b>{{ columnCount }}</b></div>
     <div class="stat">Relations <b>{{ rels.length }}</b></div>
-  </div>
-  <div>
-    <div class="st">Tables</div>
+    <div class="stat">Seed rows <b>{{ totalSeedRows }}</b></div>
+    <div class="st" style="margin-top:10px">Tables</div>
     <div class="list">
       <div v-if="!tableList.length" class="item" style="cursor:default;opacity:.7">No schema loaded.</div>
       <div v-for="t in tableList" :key="t.name" class="item" :class="{active: sel===t.name}" @click="focusTable(t.name)">{{ t.name }}</div>
     </div>
   </div>
-</aside>
-<main ref="viewport" class="work" @click.self="sel=null">
-  <svg class="edges" viewBox="0 0 6000 4000" preserveAspectRatio="none" :style="vpTransformStyle">
-    <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L8,4 L0,8 Z" fill="#60a5fa"/></marker></defs>
-    <g v-for="(e,i) in edgePaths" :key="i">
-      <path :d="e.d" fill="none" stroke="#60a5fa" stroke-width="2" marker-end="url(#arrow)"/>
-      <text :x="e.lx" :y="e.ly" fill="#94a3b8" font-size="9" text-anchor="middle">{{ e.label }}</text>
-    </g>
-  </svg>
-  <div class="world" :style="vpTransformStyle">
-    <div v-for="t in tableList" :key="t.name" class="node" :class="{sel: sel===t.name}"
-      :style="{left: pos[t.name].x+'px', top: pos[t.name].y+'px'}"
-      :ref="'node-'+t.name"
-      @mousedown="startDrag($event, t.name)" @click.stop="sel=t.name">
-      <div class="head">{{ t.name }}</div>
-      <div v-for="c in t.columns" :key="c.name" class="col" :data-c="c.name">
-        <span class="key" :class="{fk: isFk(t,c.name)}">{{ colBadge(t,c.name) }}</span>
-        <span>{{ c.name }}</span>
-        <span class="typ">{{ c.type }}</span>
+
+  <div v-show="sideTab==='seed'">
+    <div class="st">🌱 Seed Database</div>
+    <label class="label">Rows per table</label>
+    <input v-model.number="seedSettings.rowsPerTable" type="number" min="1" max="1000" style="width:100%">
+    <label class="checkline"><input type="checkbox" v-model="seedSettings.respectFk"> Respect foreign keys</label>
+    <label class="checkline"><input type="checkbox" v-model="seedSettings.realistic"> Generate realistic values</label>
+    <label class="checkline"><input type="checkbox" v-model="seedSettings.nullable"> Generate nullable values</label>
+    <label class="checkline"><input type="checkbox" v-model="seedSettings.orphanFk"> Generate orphan foreign keys</label>
+    <label class="checkline"><input type="checkbox" v-model="seedSettings.duplicates"> Generate duplicate values</label>
+    <label class="checkline"><input type="checkbox" v-model="seedSettings.invalid"> Generate invalid values</label>
+    <label class="checkline"><input type="checkbox" v-model="seedSettings.nullFk"> Generate NULL foreign keys</label>
+    <label class="checkline"><input type="checkbox" v-model="seedSettings.emptyStrings"> Generate empty strings</label>
+    <div class="row">
+      <button class="primary" :disabled="!tableCount" @click="generateSeed">Generate Seed</button>
+      <button :disabled="!hasSeed" @click="clearSeed">Clear Seed</button>
+    </div>
+    <p class="hint">Seeds in-memory data from your schema. FK order is respected.</p>
+  </div>
+
+  <div v-show="sideTab==='query'">
+    <div class="st">SQL Query Simulator</div>
+    <textarea v-model="queryText" class="q-editor" placeholder="SELECT ... FROM ..."></textarea>
+    <div class="row">
+      <button class="primary" :disabled="!hasSeed" @click="simulateQuery">▶ Simulate Query</button>
+      <button @click="clearQuery">Clear</button>
+    </div>
+    <button style="width:100%;margin-top:6px" :disabled="!hasSeed" @click="loadExampleQuery">Load Example Query</button>
+    <p class="sim-note">Simulation uses generated in-memory data.</p>
+    <div v-if="queryError" class="error-box"><b>❌ QUERY SIMULATION ERROR</b>{{ queryError }}</div>
+    <div v-if="simStages.length" class="playback">
+      <button @click="playSim" :disabled="simPlaying">{{ simPlaying ? '⏸ Pause' : '▶ Play' }}</button>
+      <button @click="resetSim">⏮ Reset</button>
+      <button @click="stepSim" :disabled="simPlaying || simStageIdx >= simStages.length - 1">⏭ Step</button>
+      <div class="speed-btns">
+        <button v-for="s in speeds" :key="s" :class="{on: simSpeed===s}" @click="simSpeed=s">{{ s }}x</button>
       </div>
     </div>
+    <div v-if="simStages.length" class="stage-info">Stage {{ simStageIdx + 1 }} / {{ simStages.length }} — {{ currentStage ? currentStage.label : '' }}</div>
   </div>
-  <div v-if="!tableList.length" class="notice">
-    <b>SQL Schema Viewer</b><br>
-    Import or paste CREATE TABLE statements to generate an interactive ER-style diagram.
-    <div class="hint">Scroll to zoom · Space+drag or middle-click to pan · Touch to swipe / pinch</div>
+</aside>
+
+<div class="main" ref="mainArea">
+  <div class="main-top" ref="viewport" @click.self="sel=null">
+    <svg class="edges" viewBox="0 0 6000 4000" preserveAspectRatio="none" :style="vpTransformStyle">
+      <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L8,4 L0,8 Z" fill="#60a5fa"/></marker><marker id="arrow-active" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L8,4 L0,8 Z" fill="#4ade80"/></marker></defs>
+      <g v-for="(e,i) in edgePaths" :key="i">
+        <path class="edge-path" :class="edgeClass(e)" :d="e.d" :marker-end="edgeActive(e) ? 'url(#arrow-active)' : 'url(#arrow)'"/>
+        <text :x="e.lx" :y="e.ly" fill="#94a3b8" font-size="9" text-anchor="middle">{{ e.label }}</text>
+      </g>
+    </svg>
+    <div class="world" :style="vpTransformStyle">
+      <div v-for="t in tableList" :key="t.name" class="node" :class="nodeClass(t.name)"
+        :style="{left: pos[t.name].x+'px', top: pos[t.name].y+'px'}"
+        :ref="'node-'+t.name"
+        @mousedown="startDrag($event, t.name)" @click.stop="sel=t.name">
+        <div class="head">{{ t.name }}<span v-if="queryTables[t.name]" class="q-badge">Active</span></div>
+        <div v-for="c in t.columns" :key="c.name" class="col" :class="colClass(t.name,c.name)" :data-c="c.name">
+          <span class="key" :class="{fk: isFk(t,c.name)}">{{ colBadge(t,c.name) }}</span>
+          <span>{{ c.name }}</span>
+          <span class="typ">{{ c.type }}</span>
+        </div>
+      </div>
+    </div>
+    <div v-if="!tableList.length" class="notice">
+      <b>SQL Schema Viewer</b><br>
+      Import or paste CREATE TABLE statements to generate an interactive ER-style diagram.
+      <div class="hint">Scroll to zoom · Space+drag or middle-click to pan · Touch to swipe / pinch</div>
+    </div>
   </div>
-</main>
+  <div v-if="!winVisible" class="panel-toggle-hint" @click="openDataWin">Show data panel — seed tables & query results</div>
+  <div v-show="winVisible" class="float-win" :style="winStyle" @mousedown="focusDataWin">
+    <div class="float-win-head" @mousedown="startWinDrag">
+      <span class="float-win-title">{{ winTitle }}</span>
+      <div class="float-win-actions">
+        <button @mousedown.stop @click.stop="resetWinPosition" title="Reset position">⟲</button>
+        <button @mousedown.stop @click.stop="winVisible=false" title="Hide panel">✕</button>
+      </div>
+    </div>
+    <div class="float-win-body">
+    <div v-if="sideTab==='seed'" style="flex:1;overflow:auto">
+      <div v-if="!hasSeed" class="hint">Generate seed data to inspect tables here.</div>
+      <div v-for="t in tableList" :key="'sd-'+t.name" class="seed-table">
+        <h4>{{ t.name }} ({{ (seedData[t.name]||[]).length }} rows)</h4>
+        <div class="data-wrap">
+          <table class="data-table" v-if="seedData[t.name] && seedData[t.name].length">
+            <thead><tr><th v-for="c in t.columns" :key="c.name">{{ c.name }}</th><th v-if="hasInvalidRows(t.name)">Flags</th></tr></thead>
+            <tbody>
+              <tr v-for="(row,ri) in visibleSeedRows(t.name)" :key="row._rid" :class="rowClass(row)">
+                <td v-for="c in t.columns" :key="c.name" :class="cellClass(t.name,c.name)">{{ fmtCell(row[c.name]) }}</td>
+                <td v-if="hasInvalidRows(t.name)"><span v-for="(msg,mi) in (row._invalid||[])" :key="mi" class="invalid-tag">⚠ {{ msg }}</span></td>
+              </tr>
+            </tbody>
+          </table>
+          <div v-else class="hint" style="padding:8px">No rows.</div>
+        </div>
+        <div v-if="(seedData[t.name]||[]).length > maxVisibleRows" class="hint">Showing {{ maxVisibleRows }} of {{ seedData[t.name].length }} rows.</div>
+      </div>
+    </div>
+    <div v-else-if="sideTab==='query' && simStages.length" style="display:flex;flex-direction:column;min-height:0;flex:1">
+      <div class="pipeline-wrap">
+        <div class="pipeline">
+          <template v-for="(st,si) in simStages">
+            <div :key="'st-'+si" class="pstage" :class="{active: simStageIdx===si, done: simStageIdx>si}" @click="goStage(si)">
+              <div class="pstage-head">{{ st.type }}</div>
+              <div class="pstage-body">
+                <div v-if="st.summary" style="margin-bottom:4px;color:#cbd5e1">{{ st.summary }}</div>
+                <span v-for="chip in stageChips(st, si)" :key="chip.id" class="row-chip" :class="chip.cls">{{ chip.label }}</span>
+              </div>
+            </div>
+            <div v-if="si < simStages.length-1" :key="'ar-'+si" class="parrow">↓</div>
+          </template>
+        </div>
+      </div>
+      <div v-if="selectedStageDetail" class="stage-detail">
+        <h5>{{ selectedStageDetail.type }} — Details</h5>
+        <pre>{{ selectedStageDetail.detailText }}</pre>
+      </div>
+      <div class="data-tabs">
+        <button :class="{on: dataView==='input'}" @click="dataView='input'">Input Data</button>
+        <button :class="{on: dataView==='intermediate'}" @click="dataView='intermediate'">Intermediate Data</button>
+        <button :class="{on: dataView==='final'}" @click="dataView='final'">Final Result</button>
+      </div>
+      <div class="data-wrap" style="flex:1">
+        <table class="data-table" v-if="displayRows.length">
+          <thead><tr><th v-for="col in displayCols" :key="col" :class="{'col-sel': isResultCol(col)}">{{ col }}</th></tr></thead>
+          <tbody>
+            <tr v-for="row in displayRows" :key="row._rid" :class="animRowClass(row)">
+              <td v-for="col in displayCols" :key="col" :class="resultCellClass(col, row)">{{ fmtCell(row[col]) }}</td>
+            </tr>
+          </tbody>
+        </table>
+        <div v-else class="hint">No data for this view.</div>
+      </div>
+      <div v-if="displayRowNote" class="hint">{{ displayRowNote }}</div>
+      <div v-if="joinViz" class="join-viz" v-html="joinViz"></div>
+    </div>
+    <div v-else>
+      <div class="hint">Switch to <b>Seed Data</b> to generate sample rows, or <b>Query</b> to simulate SELECT queries against seeded data.</div>
+    </div>
+    </div>
+    <div class="float-resize-r" @mousedown.stop="startWinResize($event,'r')"></div>
+    <div class="float-resize-b" @mousedown.stop="startWinResize($event,'b')"></div>
+    <div class="float-resize-br" @mousedown.stop="startWinResize($event,'br')"></div>
+  </div>
 </div>
 </div>
+</div>
+
 <script>
+/* ========== Seed Engine ========== */
+var SeedEngine = {
+  FIRST: ["Reno","Alice","Bob","Carol","David","Eva","Frank","Grace","Henry","Ivy","Jack","Kate","Leo","Mia","Noah","Olivia","Paul","Quinn","Rose","Sam"],
+  LAST: ["Smith","Johnson","Williams","Brown","Jones","Garcia","Miller","Davis","Wilson","Moore","Taylor","Anderson","Thomas","Jackson","White","Harris","Martin","Lee","Clark","Lewis"],
+  STATUS: ["active","inactive","pending","approved","rejected","draft","published","archived"],
+  rand: function(n){ return Math.floor(Math.random()*n); },
+  pick: function(a){ return a[this.rand(a.length)]; },
+  topoSort: function(tables, rels){
+    var deps={}, names=Object.keys(tables);
+    names.forEach(function(n){ deps[n]=new Set(); });
+    rels.forEach(function(r){
+      if(tables[r.a] && tables[r.b] && r.a!==r.b) deps[r.a].add(r.b);
+    });
+    var order=[], visited={}, temp={};
+    function visit(n){
+      if(temp[n]) return false;
+      if(visited[n]) return true;
+      temp[n]=true;
+      deps[n].forEach(function(d){ if(!visit(d)) return false; });
+      delete temp[n]; visited[n]=true; order.push(n); return true;
+    }
+    names.forEach(function(n){ visit(n); });
+    return order;
+  },
+  inferGen: function(col, type, settings, ctx){
+    var n=col.name.toLowerCase(), t=(type||"").toLowerCase();
+    if(settings.nullable && !col.notNull && Math.random()<0.12) return null;
+    if(n==="id" || n.endsWith("_id") && n!=="user_id" && n!=="order_id") return ctx.nextId(n);
+    if(n.indexOf("email")>=0) return this.pick(this.FIRST).toLowerCase()+this.rand(99)+"@example.com";
+    if(n.indexOf("first_name")>=0 || n==="firstname") return this.pick(this.FIRST);
+    if(n.indexOf("last_name")>=0 || n==="lastname") return this.pick(this.LAST);
+    if(n==="name" || n.indexOf("_name")>=0) return this.pick(this.FIRST)+" "+this.pick(this.LAST);
+    if(n.indexOf("phone")>=0) return "+1-555-"+(1000+this.rand(9000));
+    if(n.indexOf("status")>=0) return this.pick(this.STATUS);
+    if(n.indexOf("active")>=0 || t.indexOf("bool")>=0 || t.indexOf("tinyint(1)")>=0) return Math.random()<0.7;
+    if(n.indexOf("price")>=0||n.indexOf("amount")>=0||n.indexOf("total")>=0||t.indexOf("decimal")>=0||t.indexOf("numeric")>=0||t.indexOf("float")>=0||t.indexOf("double")>=0)
+      return +(Math.random()*500+5).toFixed(2);
+    if(n.indexOf("quantity")>=0||n.indexOf("qty")>=0||t.indexOf("int")>=0) return 1+this.rand(50);
+    if(n.indexOf("created")>=0||n.indexOf("updated")>=0||t.indexOf("timestamp")>=0||t.indexOf("datetime")>=0)
+      return new Date(Date.now()-this.rand(86400000*365)).toISOString().slice(0,19).replace("T"," ");
+    if(t.indexOf("date")>=0 && t.indexOf("datetime")<0) return new Date(Date.now()-this.rand(86400000*365)).toISOString().slice(0,10);
+    if(t.indexOf("text")>=0) return "Sample text "+(1+this.rand(100));
+    if(settings.emptyStrings && Math.random()<0.05) return "";
+    return "val_"+(1+this.rand(9999));
+  },
+  generate: function(tables, rels, settings){
+    var order=this.topoSort(tables, rels), data={}, ids={}, self=this;
+    order.forEach(function(tn){
+      var t=tables[tn], rows=[], pk=t.pk[0]||"id";
+      ids[tn]=[];
+      for(var i=0;i<settings.rowsPerTable;i++){
+        var row={_rid: tn+"-"+String(i+1).padStart(3,"0"), _invalid:[]}, ctx={nextId:function(col){
+          return i+1;
+        }};
+        t.columns.forEach(function(c){
+          var fk=t.fk.find(function(f){ return f.c===c.name; });
+          if(fk && settings.respectFk && !settings.orphanFk){
+            var ref=data[fk.rt];
+            if(settings.nullFk && Math.random()<0.08){ row[c.name]=null; return; }
+            if(ref && ref.length){
+              if(settings.invalid && Math.random()<0.05){
+                row[c.name]=99999+self.rand(100); row._invalid.push("INVALID FOREIGN KEY");
+              } else {
+                var pick=ref[self.rand(ref.length)];
+                row[c.name]=pick[fk.rc]!=null?pick[fk.rc]:pick[Object.keys(pick).find(function(k){return k[0]!=="_";})];
+              }
+            } else row[c.name]=null;
+          } else if(fk && settings.orphanFk){
+            row[c.name]=settings.invalid?99999+self.rand(50):1+self.rand(settings.rowsPerTable*2);
+            if(!data[fk.rt] || !(data[fk.rt]||[]).some(function(r){ return r[fk.rc]===row[c.name]; }))
+              row._invalid.push("INVALID FOREIGN KEY");
+          } else {
+            row[c.name]=self.inferGen(c,c.type,settings,ctx);
+          }
+          if(t.pk.indexOf(c.name)>=0 && row[c.name]==null) row[c.name]=i+1;
+        });
+        if(settings.duplicates && i>0 && Math.random()<0.1){
+          var prev=rows[self.rand(rows.length)];
+          t.columns.forEach(function(c){ if(t.pk.indexOf(c.name)<0 && Math.random()<0.5) row[c.name]=prev[c.name]; });
+        }
+        rows.push(row); ids[tn].push(row[pk]!=null?row[pk]:i+1);
+      }
+      data[tn]=rows;
+    });
+    return data;
+  }
+};
+
+/* ========== Query Parser ========== */
+var QueryParser = {
+  norm: function(s){ return s.replace(/\s+/g," ").trim(); },
+  stripComments: function(s){ return s.replace(/\/\*[\s\S]*?\*\//g,"").replace(/--[^\r\n]*/g,""); },
+  splitComma: function(s){
+    var out=[], d=0, q=null, st=0;
+    for(var i=0;i<s.length;i++){
+      var c=s[i];
+      if(q){ if(c===q && s[i-1]!=="\\") q=null; continue; }
+      if("'\"`".indexOf(c)>=0){ q=c; continue; }
+      if(c==="(") d++; else if(c===")") d--;
+      else if(c==="," && d===0){ out.push(s.slice(st,i).trim()); st=i+1; }
+    }
+    out.push(s.slice(st).trim());
+    return out.filter(Boolean);
+  },
+  parseSelectList: function(s){
+    return this.splitComma(s).map(function(x){
+      x=x.trim();
+      var m=x.match(/^(.+?)\s+(?:AS\s+)?([`"']?[\w$]+[`"']?)$/i);
+      if(m && !/^(COUNT|SUM|AVG|MIN|MAX)\s*\(/i.test(m[1])) return {expr:m[1].trim(), alias:this.cleanId(m[2])};
+      var fn=x.match(/^(COUNT|SUM|AVG|MIN|MAX)\s*\(\s*(.*?)\s*\)(?:\s+(?:AS\s+)?([`"']?[\w$]+[`"']?))?$/i);
+      if(fn) return {expr:fn[1]+"("+fn[2]+")", alias:fn[3]?this.cleanId(fn[3]):fn[1].toLowerCase()+"_"+this.cleanId(fn[2]||"all"), agg:true};
+      return {expr:x, alias:this.cleanId(x.split(".").pop())};
+    }.bind(this));
+  },
+  cleanId: function(x){ return String(x||"").replace(/^[`"'\[]+|[`"'\]]+$/g,""); },
+  parseJoins: function(sql){
+    var joins=[], re=/\s((?:INNER|LEFT|RIGHT|FULL)\s+)?JOIN\s+([`"']?[\w$]+[`"']?)(?:\s+(?:AS\s+)?([`"']?[\w$]+[`"']?))?\s+ON\s+([\s\S]*?)(?=\s+(?:(?:INNER|LEFT|RIGHT|FULL)\s+)?JOIN|\s+WHERE|\s+GROUP|\s+HAVING|\s+ORDER|\s+LIMIT|$)/gi, m;
+    while((m=re.exec(sql))){
+      joins.push({
+        type: ((m[1]||"INNER").trim()||"INNER")+" JOIN",
+        table: this.cleanId(m[2]),
+        alias: m[3]?this.cleanId(m[3]):this.cleanId(m[2]),
+        on: m[4].trim()
+      });
+    }
+    return joins;
+  },
+  parse: function(sql){
+    sql=this.stripComments(sql);
+    var err=null, upper=sql.toUpperCase();
+    if(upper.indexOf("SELECT")<0) return {error:"Missing SELECT clause."};
+    if(upper.indexOf("FROM")<0) return {error:"Missing FROM clause."};
+    var selM=sql.match(/SELECT\s+(DISTINCT\s+)?([\s\S]+?)\s+FROM\s+/i);
+    if(!selM) return {error:"Could not parse SELECT ... FROM."};
+    var distinct=!!selM[1], selectItems=this.parseSelectList(selM[2]);
+    var fromRest=sql.slice(selM.index+selM[0].length);
+    var fromM=fromRest.match(/^([`"']?[\w$]+[`"']?)(?:\s+(?:AS\s+)?([`"']?[\w$]+[`"']?))?/i);
+    if(!fromM) return {error:"Could not parse FROM table."};
+    var fromTable=this.cleanId(fromM[1]), fromAlias=fromM[2]?this.cleanId(fromM[2]):fromTable;
+    var joins=this.parseJoins(fromRest);
+    var clauseRe=function(k){ return new RegExp("\\s"+k+"\\s+([\\s\\S]*?)(?=\\s+(?:INNER|LEFT|RIGHT|FULL\\s+)?JOIN|\\s+WHERE|\\s+GROUP|\\s+HAVING|\\s+ORDER|\\s+LIMIT|$)","i"); };
+    var whereM=fromRest.match(/\sWHERE\s+([\s\S]*?)(?=\s+GROUP|\s+HAVING|\s+ORDER|\s+LIMIT|$)/i);
+    var groupM=fromRest.match(/\sGROUP\s+BY\s+([\s\S]*?)(?=\s+HAVING|\s+ORDER|\s+LIMIT|$)/i);
+    var havingM=fromRest.match(/\sHAVING\s+([\s\S]*?)(?=\s+ORDER|\s+LIMIT|$)/i);
+    var orderM=fromRest.match(/\sORDER\s+BY\s+([\s\S]*?)(?=\s+LIMIT|$)/i);
+    var limitM=fromRest.match(/\sLIMIT\s+(\d+)/i);
+    var joinConds=joins.map(function(j){
+      var p=j.on.match(/([`"']?[\w$]+[`"']?(?:\.[`"']?[\w$]+[`"']?)?)\s*(=|!=|<>)\s*([`"']?[\w$]+[`"']?(?:\.[`"']?[\w$]+[`"']?)?)/);
+      return p?{left:p[1],op:p[2],right:p[3],raw:j.on}:{raw:j.on};
+    });
+    return {
+      distinct:distinct, selectItems:selectItems,
+      from:{table:fromTable,alias:fromAlias},
+      joins:joins, joinConds:joinConds,
+      where:whereM?whereM[1].trim():null,
+      groupBy:groupM?this.splitComma(groupM[1]):[],
+      having:havingM?havingM[1].trim():null,
+      orderBy:orderM?orderM[1].trim():null,
+      limit:limitM?parseInt(limitM[1],10):null,
+      raw:sql
+    };
+  }
+};
+
+/* ========== Query Executor ========== */
+var QueryExecutor = {
+  resolveValue: function(row, token, aliases){
+    token=String(token||"").trim();
+    if(/^'([^']*)'$/.test(token)) return token.slice(1,-1);
+    if(/^"([^"]*)"$/.test(token)) return token.slice(1,-1);
+    if(token==="true") return true;
+    if(token==="false") return false;
+    if(/[`"']?[\w$]+[`"']?(?:\.[`"']?[\w$]+[`"']?)+/.test(token)){
+      return this.resolveCol(row, token, aliases);
+    }
+    if(/^[`]?[\w$]+[`"']?$/.test(token)){
+      var v=this.resolveCol(row, token, aliases);
+      if(v!==undefined) return v;
+    }
+    if(!isNaN(token)&&token!=="") return Number(token);
+    return token;
+  },
+  resolveCol: function(row, ref, aliases){
+    ref=String(ref||"").trim().replace(/^[`"']|[`"']$/g,"");
+    if(ref.indexOf(".")>=0){
+      var p=ref.split("."), a=this.cleanId(p[0]), c=this.cleanId(p[1]);
+      if(row._tables && row._tables[a] && row._tables[a][c]!==undefined) return row._tables[a][c];
+      var k=a+"."+c;
+      if(row[k]!==undefined) return row[k];
+      return undefined;
+    }
+    if(row._tables){
+      for(var alias in row._tables){
+        if(row._tables[alias] && row._tables[alias][ref]!==undefined) return row._tables[alias][ref];
+      }
+    }
+    return row[this.cleanId(ref)];
+  },
+  cleanId: function(x){ return String(x||"").replace(/^[`"'\[]+|[`"'\]]+$/g,""); },
+  evalExpr: function(row, expr, aliases){
+    expr=expr.trim();
+    var agg=expr.match(/^(COUNT|SUM|AVG|MIN|MAX)\s*\(\s*(.*?)\s*\)$/i);
+    if(agg) return row["__agg_"+agg[1].toLowerCase()+"_"+agg[2]]; 
+    if(expr==="*") return row;
+    return this.resolveCol(row, expr, aliases);
+  },
+  evalCond: function(row, cond, aliases){
+    cond=cond.trim();
+    if(/\bAND\b/i.test(cond) && !/^\(.*\)$/.test(cond)){
+      return cond.split(/\bAND\b/i).every(function(p){ return this.evalCond(row,p.trim(),aliases); }.bind(this));
+    }
+    if(/\bOR\b/i.test(cond)){
+      return cond.split(/\bOR\b/i).some(function(p){ return this.evalCond(row,p.trim(),aliases); }.bind(this));
+    }
+    var m;
+    if((m=cond.match(/^(.+?)\s+IS\s+NOT\s+NULL$/i))) return this.resolveCol(row,m[1],aliases)!=null;
+    if((m=cond.match(/^(.+?)\s+IS\s+NULL$/i))) return this.resolveCol(row,m[1],aliases)==null;
+    if((m=cond.match(/^(.+?)\s+IN\s*\((.+)\)$/i))){
+      var vals=m[2].split(",").map(function(v){ v=v.trim(); if(/^'/.test(v)) return v.slice(1,-1); return isNaN(v)?v:Number(v); });
+      var lv=this.resolveCol(row,m[1],aliases);
+      return vals.some(function(v){ return lv==v; });
+    }
+    if((m=cond.match(/^(.+?)\s+LIKE\s+'([^']*)'$/i))){
+      var lv=String(this.resolveCol(row,m[1],aliases)||"");
+      var pat=m[2].replace(/%/g,".*").replace(/_/g,".");
+      return new RegExp("^"+pat+"$","i").test(lv);
+    }
+    if((m=cond.match(/^(.+?)\s*(=|!=|<>|>=|<=|>|<)\s*(.+)$/))){
+      var l=this.resolveCol(row,m[1],aliases), r=this.resolveValue(row,m[3],aliases);
+      var op=m[2];
+      if(op==="=") return l==r;
+      if(op==="!="||op==="<>") return l!=r;
+      if(op===">") return l>r;
+      if(op==="<") return l<r;
+      if(op===">=") return l>=r;
+      if(op==="<=") return l<=r;
+    }
+    return true;
+  },
+  cloneRow: function(row, rid){
+    var o=Object.assign({}, row); o._rid=rid||row._rid; return o;
+  },
+  prefixRows: function(rows, alias, table){
+    return rows.map(function(r,i){
+      var o=this.cloneRow(r, r._rid+"@"+alias);
+      o._alias=alias; o._table=table;
+      o._tables=(o._tables||{}); o._tables[alias]=Object.assign({}, r);
+      return o;
+    }.bind(this));
+  },
+  doJoin: function(left, right, join, aliases, seedData){
+    var on=join.on, type=join.type||"INNER JOIN";
+    var cond=on.match(/([`"']?[\w$]+[`"']?(?:\.[`"']?[\w$]+[`"']?)?)\s*(=|!=|<>)\s*([`"']?[\w$]+[`"']?(?:\.[`"']?[\w$]+[`"']?)?)/);
+    if(!cond) return {rows:[], error:"Invalid JOIN condition: "+on};
+    var out=[], matches=[];
+    left.forEach(function(lr){
+      var matched=false;
+      right.forEach(function(rr){
+        var row=this.mergeRows(lr, rr, join.alias);
+        if(this.evalCond(row, cond[1]+" "+cond[2]+" "+cond[3], aliases)){
+          matched=true; matches.push({left:lr._rid, right:rr._rid, lv:this.resolveCol(row,cond[1],aliases), rv:this.resolveCol(row,cond[3],aliases)});
+          out.push(row);
+        }
+      }.bind(this));
+      if(!matched && type.indexOf("LEFT")>=0){
+        var row=this.mergeRows(lr, {_rid:"null-"+join.alias, _null:true}, join.alias, true);
+        out.push(row);
+      }
+    }.bind(this));
+    if(type.indexOf("RIGHT")>=0){
+      right.forEach(function(rr){
+        if(!out.some(function(o){ return o._tables && o._tables[join.alias] && o._tables[join.alias]._rid===rr._rid; })){
+          var row=this.mergeRows({_rid:"null-left", _null:true}, rr, join.alias, false, true);
+          out.push(row);
+        }
+      }.bind(this));
+    }
+    return {rows:out, matches:matches, joinInfo:{type:type, left:cond[1], op:cond[2], right:cond[3]}};
+  },
+  mergeRows: function(l,r,rAlias,rNull,lNull){
+    var o={ _rid:"join-"+l._rid+"+"+(r._rid||rAlias), _tables:{} };
+    if(l._tables){
+      Object.keys(l._tables).forEach(function(a){ o._tables[a]=Object.assign({}, l._tables[a]); });
+    } else if(l._alias){
+      o._tables[l._alias]=Object.assign({}, l);
+      Object.keys(l).forEach(function(k){ if(k[0]!=="_") delete o._tables[l._alias][k]; });
+    }
+    if(rNull){
+      var nt={};
+      if(r._tables && r._tables[rAlias]) Object.keys(r._tables[rAlias]).forEach(function(k){ if(k[0]!=="_") nt[k]=null; });
+      else Object.keys(r).forEach(function(k){ if(k[0]!=="_") nt[k]=null; });
+      o._tables[rAlias]=nt;
+    } else {
+      o._tables[rAlias]=Object.assign({}, r._tables&&r._tables[rAlias]?r._tables[rAlias]:r);
+      Object.keys(o._tables[rAlias]).forEach(function(k){ if(k[0]==="_") delete o._tables[rAlias][k]; });
+    }
+    Object.keys(o._tables).forEach(function(a){
+      Object.keys(o._tables[a]).forEach(function(k){
+        if(k[0]!=="_") o[a+"."+k]=o._tables[a][k];
+      });
+    });
+    return o;
+  },
+  project: function(rows, items, aliases, isAgg){
+    return rows.map(function(row,i){
+      var o={_rid:"sel-"+(row._rid||i)};
+      items.forEach(function(it){
+        var fn=it.expr.match(/^(COUNT|SUM|AVG|MIN|MAX)\s*\(\s*(.*?)\s*\)$/i);
+        if(fn){
+          var arg=fn[2], grp=row.__group;
+          if(fn[1].toUpperCase()==="COUNT"){
+            if(arg.trim()==="*") o[it.alias||"count"]=grp?grp.length:1;
+            else if(grp) o[it.alias||fn[1].toLowerCase()]=grp.filter(function(r){ return QueryExecutor.resolveCol(r,arg,aliases)!=null; }).length;
+            else o[it.alias||fn[1].toLowerCase()]=QueryExecutor.resolveCol(row,arg,aliases)!=null?1:0;
+          } else if(grp){
+            var nums=grp.map(function(r){ return Number(QueryExecutor.resolveCol(r,arg,aliases)); }).filter(function(n){ return !isNaN(n); });
+            var alias=it.alias||fn[1].toLowerCase();
+            if(fn[1].toUpperCase()==="SUM") o[alias]=nums.reduce(function(a,b){return a+b;},0);
+            else if(fn[1].toUpperCase()==="AVG") o[alias]=nums.length?+(nums.reduce(function(a,b){return a+b;},0)/nums.length).toFixed(2):null;
+            else if(fn[1].toUpperCase()==="MIN") o[alias]=nums.length?Math.min.apply(null,nums):null;
+            else if(fn[1].toUpperCase()==="MAX") o[alias]=nums.length?Math.max.apply(null,nums):null;
+          } else o[it.alias||fn[1].toLowerCase()]=QueryExecutor.resolveCol(row,arg,aliases);
+        } else {
+          o[it.alias||it.expr]=QueryExecutor.resolveCol(row,it.expr,aliases);
+        }
+      });
+      return o;
+    });
+  },
+  groupRows: function(rows, groupCols, aliases){
+    var map={};
+    rows.forEach(function(r){
+      var key=groupCols.map(function(c){ return String(this.resolveCol(r,c,aliases)); }.bind(this)).join("\0");
+      if(!map[key]) map[key]={key:key, __group:[]};
+      map[key].__group.push(r);
+    }.bind(this));
+    return Object.keys(map).map(function(k,i){
+      var g=map[k], rep=this.cloneRow(g.__group[0],"grp-"+i);
+      rep.__group=g.__group;
+      return rep;
+    }.bind(this));
+  },
+  orderRows: function(rows, orderBy, aliases){
+    var parts=orderBy.split(",").map(function(p){
+      var m=p.trim().match(/^(.+?)(?:\s+(ASC|DESC))?$/i);
+      return {col:m[1], desc:(m[2]||"ASC").toUpperCase()==="DESC"};
+    });
+    return rows.slice().sort(function(a,b){
+      for(var i=0;i<parts.length;i++){
+        var av=a[parts[i].col]!=null?a[parts[i].col]:this.resolveCol(a,parts[i].col,aliases);
+        var bv=b[parts[i].col]!=null?b[parts[i].col]:this.resolveCol(b,parts[i].col,aliases);
+        if(av<bv) return parts[i].desc?1:-1;
+        if(av>bv) return parts[i].desc?-1:1;
+      }
+      return 0;
+    }.bind(this));
+  },
+  execute: function(parsed, seedData, tables){
+    var aliases={}, stages=[], hl={tables:{}, cols:[], rels:[]}, self=this;
+    function addCol(aliasOrTable, col){
+      var tn=aliases[QueryExecutor.cleanId(aliasOrTable)]||QueryExecutor.cleanId(aliasOrTable);
+      hl.cols.push({t:tn, c:QueryExecutor.cleanId(col)});
+    }
+    function addColExpr(expr){
+      (expr||"").replace(/([`"']?[\w$]+[`"']?)\.([`"']?[\w$]+[`"']?)/g,function(_,a,c){ addCol(a,c); });
+    }
+    aliases[parsed.from.alias]=parsed.from.table;
+    hl.tables[parsed.from.table]=true;
+    parsed.selectItems.forEach(function(it){ addColExpr(it.expr); });
+    if(!seedData[parsed.from.table]) return {error:"Unknown table: "+parsed.from.table, available:Object.keys(seedData)};
+    var rows=QueryExecutor.prefixRows(seedData[parsed.from.table]||[], parsed.from.alias, parsed.from.table);
+    stages.push({type:"FROM", label:parsed.from.table, summary:parsed.from.alias, input:[], output:rows.slice(), rejected:[],
+      detail:{table:parsed.from.table, alias:parsed.from.alias}});
+    for(var ji=0;ji<parsed.joins.length;ji++){
+      var j=parsed.joins[ji];
+      aliases[j.alias]=j.table; hl.tables[j.table]=true;
+      if(!seedData[j.table]) return {error:"Unknown table: "+j.table, available:Object.keys(seedData)};
+      var jr=QueryExecutor.prefixRows(seedData[j.table]||[], j.alias, j.table);
+      addColExpr(j.on);
+      if(tables[parsed.from.table]&&tables[j.table]){
+        hl.rels.push({a:parsed.from.table, b:j.table});
+      }
+      var res=QueryExecutor.doJoin(rows, jr, j, aliases, seedData);
+      if(res.error) return {error:res.error};
+      stages.push({type:"JOIN", label:j.type, summary:j.table+" ON "+j.on, input:{left:rows.length, right:jr.length}, output:res.rows.slice(), rejected:[], joinInfo:res.joinInfo, matches:res.matches});
+      rows=res.rows;
+    }
+    if(parsed.where){
+      var acc=[], rej=[];
+      addColExpr(parsed.where);
+      rows.forEach(function(r){
+        if(QueryExecutor.evalCond(r,parsed.where,aliases)) acc.push(r); else rej.push(r);
+      });
+      stages.push({type:"WHERE", label:"WHERE", summary:parsed.where, input:rows.slice(), output:acc, rejected:rej});
+      rows=acc;
+    }
+    if(parsed.groupBy.length){
+      var grouped=QueryExecutor.groupRows(rows, parsed.groupBy, aliases);
+      parsed.groupBy.forEach(function(g){ addColExpr(g); });
+      stages.push({type:"GROUP BY", label:"GROUP BY", summary:parsed.groupBy.join(", "), input:rows, output:grouped, rejected:[]});
+      rows=grouped;
+    }
+    if(parsed.having){
+      var ha=[], hr=[];
+      rows.forEach(function(r){ if(QueryExecutor.evalCond(r,parsed.having,aliases)) ha.push(r); else hr.push(r); });
+      stages.push({type:"HAVING", label:"HAVING", summary:parsed.having, input:rows, output:ha, rejected:hr});
+      rows=ha;
+    }
+    var projected=QueryExecutor.project(rows, parsed.selectItems, aliases, parsed.groupBy.length>0);
+    stages.push({type:"SELECT", label:"SELECT", summary:parsed.selectItems.map(function(i){return i.expr+(i.alias?" AS "+i.alias:"");}).join(", "),
+      input:rows, output:projected, rejected:[]});
+    rows=projected;
+    if(parsed.distinct){
+      var seen={}, dr=[];
+      rows.forEach(function(r){
+        var k=JSON.stringify(r); if(!seen[k]){ seen[k]=1; dr.push(r); }
+      });
+      stages.push({type:"DISTINCT", label:"DISTINCT", summary:"Remove duplicates", input:rows, output:dr, rejected:[]});
+      rows=dr;
+    }
+    if(parsed.orderBy){
+      rows=QueryExecutor.orderRows(rows, parsed.orderBy, aliases);
+      stages.push({type:"ORDER BY", label:"ORDER BY", summary:parsed.orderBy, input:projected, output:rows, rejected:[]});
+    }
+    if(parsed.limit!=null){
+      var lim=rows.slice(0,parsed.limit);
+      stages.push({type:"LIMIT", label:"LIMIT", summary:String(parsed.limit), input:rows, output:lim, rejected:rows.slice(parsed.limit)});
+      rows=lim;
+    }
+    stages.push({type:"RESULT", label:"RESULT", summary:rows.length+" rows", input:[], output:rows, rejected:[]});
+    return {stages:stages, result:rows, highlight:hl, aliases:aliases};
+  }
+};
+
+/* ========== Vue App ========== */
+var EXAMPLE_SCHEMA = "CREATE TABLE users (\n  id INT PRIMARY KEY,\n  name VARCHAR(100),\n  email VARCHAR(255),\n  active TINYINT(1)\n);\n\nCREATE TABLE orders (\n  id INT PRIMARY KEY,\n  user_id INT,\n  total DECIMAL(10,2),\n  FOREIGN KEY (user_id) REFERENCES users(id)\n);";
+
+var EXAMPLE_QUERY = "SELECT\n    u.name,\n    COUNT(o.id) AS order_count,\n    SUM(o.total) AS total_spent\nFROM users u\nLEFT JOIN orders o\n    ON u.id = o.user_id\nWHERE u.active = 1\nGROUP BY u.name\nORDER BY total_spent DESC\nLIMIT 10;";
+
 new Vue({
   el: "#app",
   mixins: [CanvasViewportMixin],
@@ -98,22 +678,239 @@ new Vue({
       pos: {},
       sel: null,
       drag: null,
-      edgePaths: []
+      edgePaths: [],
+      sideTab: "schema",
+      seedData: {},
+      seedSettings: { rowsPerTable:20, respectFk:true, realistic:true, nullable:true, orphanFk:false, duplicates:false, invalid:false, nullFk:false, emptyStrings:false },
+      queryText: "",
+      queryError: "",
+      simStages: [],
+      simStageIdx: 0,
+      simPlaying: false,
+      simSpeed: 1,
+      simTimer: null,
+      speeds: [0.25, 0.5, 1, 2, 4],
+      dataView: "intermediate",
+      queryHl: { tables:{}, cols:[], rels:[] },
+      queryAliases: {},
+      animFlowRows: [],
+      winVisible: true,
+      winX: 24,
+      winY: -1,
+      winW: 680,
+      winH: 300,
+      winZ: 20,
+      maxVisibleRows: 50,
+      selectedStageIdx: null,
+      joinVizHtml: ""
     };
   },
   computed: {
     tableList: function(){ return Object.values(this.tables); },
     tableCount: function(){ return this.tableList.length; },
-    columnCount: function(){
-      return this.tableList.reduce(function(n,t){ return n + t.columns.length; }, 0);
+    columnCount: function(){ return this.tableList.reduce(function(n,t){ return n+t.columns.length; }, 0); },
+    hasSeed: function(){ return Object.keys(this.seedData).some(function(k){ return this.seedData[k].length; }.bind(this)); },
+    totalSeedRows: function(){ return Object.keys(this.seedData).reduce(function(n,k){ return n+(this.seedData[k]||[]).length; }.bind(this),0); },
+    queryTables: function(){ return this.queryHl.tables||{}; },
+    currentStage: function(){ return this.simStages[this.simStageIdx]||null; },
+    selectedStageDetail: function(){
+      var st=this.simStages[this.selectedStageIdx!=null?this.selectedStageIdx:this.simStageIdx];
+      if(!st) return null;
+      return { type:st.type, detailText:this.stageDetailText(st) };
+    },
+    displayRows: function(){
+      if(!this.simStages.length) return [];
+      var st=this.currentStage, cap=this.maxVisibleRows;
+      if(this.dataView==="final"){ var last=this.simStages[this.simStages.length-1]; return (last.output||[]).slice(0,cap); }
+      if(this.dataView==="input"){
+        if(!st) return [];
+        var inp=st.input;
+        if(Array.isArray(inp)) return inp.slice(0,cap);
+        return [];
+      }
+      return (st.output||[]).slice(0,cap);
+    },
+    displayCols: function(){
+      var rows=this.displayRows;
+      if(!rows.length) return [];
+      return Object.keys(rows[0]).filter(function(k){ return k[0]!=="_" && k!=="__group"; });
+    },
+    displayRowNote: function(){
+      var st=this.currentStage, total=0;
+      if(this.dataView==="final") total=(this.simStages[this.simStages.length-1].output||[]).length;
+      else if(st){ total=(this.dataView==="input"&&Array.isArray(st.input)?st.input:(st.output||[])).length; }
+      if(total>this.maxVisibleRows) return "Showing "+this.maxVisibleRows+" of "+total+" rows.";
+      return "";
+    },
+    joinViz: function(){ return this.joinVizHtml; },
+    winTitle: function(){
+      if(this.sideTab==="seed") return "Seed Data";
+      if(this.sideTab==="query"&&this.simStages.length) return "Query Simulation";
+      if(this.sideTab==="query") return "Query Simulator";
+      return "Data Panel";
+    },
+    winStyle: function(){
+      var y=this.winY, main=this.$refs.mainArea;
+      if(y<0&&main) y=Math.max(12, Math.round((main.clientHeight-this.winH)/2));
+      return { left:this.winX+"px", top:y+"px", width:this.winW+"px", height:this.winH+"px", zIndex:this.winZ };
     }
   },
   watch: {
-    pos: { deep: true, handler: function(){ this.$nextTick(this.buildEdges); } },
-    rels: function(){ this.$nextTick(this.buildEdges); }
+    pos: { deep:true, handler:function(){ this.$nextTick(this.buildEdges); } },
+    rels: function(){ this.$nextTick(this.buildEdges); },
+    simStageIdx: function(){ this.updateJoinViz(); },
+    sideTab: function(t){
+      if(t==="seed"||t==="query") this.openDataWin();
+    }
+  },
+  mounted: function(){
+    var self=this;
+    this.$nextTick(function(){ self.resetWinPosition(); });
+    window.addEventListener("resize", this.onWinResize);
+  },
+  beforeDestroy: function(){
+    window.removeEventListener("resize", this.onWinResize);
   },
   methods: {
-    esc: function(v){ return String(v==null?"":v).replace(/[&<>"']/g,function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); },
+    loadExampleSchema: function(){ this.sqlText=EXAMPLE_SCHEMA; this.parseSql(EXAMPLE_SCHEMA); },
+    loadExampleQuery: function(){ this.queryText=EXAMPLE_QUERY; },
+    fmtCell: function(v){ if(v===null||v===undefined) return "NULL"; if(typeof v==="boolean") return v?"true":"false"; return String(v); },
+    hasInvalidRows: function(t){ return (this.seedData[t]||[]).some(function(r){ return r._invalid&&r._invalid.length; }); },
+    visibleSeedRows: function(t){ return (this.seedData[t]||[]).slice(0,this.maxVisibleRows); },
+    rowClass: function(row){ if(row._invalid&&row._invalid.length) return "row-invalid"; return ""; },
+    cellClass: function(){ return ""; },
+    generateSeed: function(){
+      if(!this.tableCount){ alert("Load a schema first."); return; }
+      this.seedData=SeedEngine.generate(this.tables, this.rels, this.seedSettings);
+      this.sideTab="seed";
+      this.openDataWin();
+    },
+    clearSeed: function(){ this.seedData={}; this.clearQuery(); },
+    clearQuery: function(){
+      this.queryText=""; this.queryError=""; this.simStages=[]; this.simStageIdx=0;
+      this.queryHl={tables:{},cols:[],rels:[]}; this.queryAliases={}; this.stopSim(); this.joinVizHtml="";
+    },
+    simulateQuery: function(){
+      this.stopSim(); this.queryError="";
+      if(!this.hasSeed){ this.queryError="No seed data. Generate seed data first."; return; }
+      var parsed=QueryParser.parse(this.queryText);
+      if(parsed.error){ this.queryError=parsed.error; return; }
+      var res=QueryExecutor.execute(parsed, this.seedData, this.tables);
+      if(res.error){
+        this.queryError=res.error+(res.available?"\n\nAvailable tables:\n"+res.available.join("\n"):"");
+        return;
+      }
+      this.simStages=res.stages;
+      this.queryHl=res.highlight;
+      this.queryAliases=res.aliases||{};
+      this.simStageIdx=0;
+      this.selectedStageIdx=0;
+      this.dataView="intermediate";
+      this.sideTab="query";
+      this.openDataWin();
+      this.updateJoinViz();
+      this.$nextTick(this.buildEdges);
+    },
+    stageDetailText: function(st){
+      var lines=[st.summary||""];
+      if(st.type==="WHERE"||st.type==="HAVING"){
+        lines.push("","Condition:", st.summary);
+        lines.push("Input: "+(Array.isArray(st.input)?st.input.length:st.input)+" rows");
+        lines.push("Output: "+(st.output||[]).length+" rows");
+        lines.push("Rejected: "+(st.rejected||[]).length+" rows");
+      } else if(st.type==="JOIN"){
+        if(st.joinInfo){ lines.push("","Type: "+st.label,"Left: "+st.joinInfo.left,"Operator: "+st.joinInfo.op,"Right: "+st.joinInfo.right); }
+        lines.push("Input: left "+(st.input&&st.input.left!=null?st.input.left:"?")+", right "+(st.input&&st.input.right!=null?st.input.right:"?"));
+        lines.push("Output: "+(st.output||[]).length+" rows");
+        if(st.matches&&st.matches.length) lines.push("Matches: "+st.matches.length);
+      } else {
+        var inp=Array.isArray(st.input)?st.input.length:(typeof st.input==="object"&&st.input?JSON.stringify(st.input):"0");
+        lines.push("","Input: "+inp+" rows","Output: "+(st.output||[]).length+" rows");
+      }
+      return lines.join("\n");
+    },
+    stageChips: function(st, si){
+      if(si!==this.simStageIdx) return [];
+      var chips=[], cap=8;
+      (st.output||[]).slice(0,cap).forEach(function(r,i){
+        chips.push({id:r._rid||i, label:(r._rid||"row").slice(-8), cls: si===this.simStageIdx?"flow":""});
+      }.bind(this));
+      (st.rejected||[]).slice(0,3).forEach(function(r,i){
+        chips.push({id:"rej-"+(r._rid||i), label:"✕ "+(r._rid||"row").slice(-6), cls:"reject"});
+      });
+      return chips;
+    },
+    goStage: function(i){ this.simStageIdx=i; this.selectedStageIdx=i; this.stopSim(); },
+    playSim: function(){
+      if(this.simPlaying){ this.stopSim(); return; }
+      this.simPlaying=true; this.runAnimStep();
+    },
+    runAnimStep: function(){
+      var self=this;
+      if(!this.simPlaying) return;
+      if(this.simStageIdx>=this.simStages.length-1){ this.simPlaying=false; return; }
+      this.simStageIdx++;
+      this.selectedStageIdx=this.simStageIdx;
+      this.simTimer=setTimeout(function(){ self.runAnimStep(); }, 900/this.simSpeed);
+    },
+    stopSim: function(){ this.simPlaying=false; if(this.simTimer) clearTimeout(this.simTimer); this.simTimer=null; },
+    resetSim: function(){ this.stopSim(); this.simStageIdx=0; this.selectedStageIdx=0; },
+    stepSim: function(){ this.stopSim(); if(this.simStageIdx<this.simStages.length-1){ this.simStageIdx++; this.selectedStageIdx=this.simStageIdx; } },
+    updateJoinViz: function(){
+      var st=this.currentStage;
+      if(!st||st.type!=="JOIN"||!st.matches||!st.matches.length){ this.joinVizHtml=""; return; }
+      var m=st.matches[0];
+      this.joinVizHtml="<div>"+this.fmtCell(m.lv)+" <span class='join-line'>│ MATCH ▼</span> "+this.fmtCell(m.rv)+"</div>";
+    },
+    isResultCol: function(col){
+      var st=this.simStages.find(function(s){ return s.type==="SELECT"; });
+      if(!st) return false;
+      return true;
+    },
+    resultCellClass: function(col, row){ return "col-hl"; },
+    animRowClass: function(row){
+      var st=this.currentStage;
+      if(!st) return "";
+      if((st.rejected||[]).some(function(r){ return r._rid===row._rid; })) return "row-reject";
+      if(st.type==="JOIN"&&st.matches&&st.matches.some(function(m){ return row._rid&&row._rid.indexOf(m.left)>=0; })) return "row-sel";
+      return "";
+    },
+    nodeClass: function(name){
+      var q=Object.keys(this.queryHl.tables||{}).length>0;
+      return { sel:this.sel===name, "q-active":!!this.queryHl.tables[name], "q-dim":q&&!this.queryHl.tables[name] };
+    },
+    colClass: function(tn,cn){
+      var cols=this.queryHl.cols||[], sel=false, join=false;
+      cols.forEach(function(c){
+        if(c.t===tn && c.c===cn) sel=true;
+      });
+      var st=this.currentStage;
+      if(st&&st.type==="JOIN"&&st.joinInfo){
+        var l=st.joinInfo.left||"", r=st.joinInfo.right||"";
+        if(l.indexOf("."+cn)>=0 && l.indexOf(tn)>=0) join=true;
+        if(r.indexOf("."+cn)>=0 && r.indexOf(tn)>=0) join=true;
+        Object.keys(this.queryAliases).forEach(function(a){
+          if(this.queryAliases[a]===tn){
+            if(l.indexOf(a+"."+cn)>=0||r.indexOf(a+"."+cn)>=0) join=true;
+          }
+        }.bind(this));
+      }
+      return { "q-col-sel":sel, "q-col-join":join };
+    },
+    edgeClass: function(e){
+      var q=Object.keys(this.queryHl.tables||{}).length>0;
+      return {"q-active":this.edgeActive(e), "q-dim":q&&!this.edgeActive(e)};
+    },
+    edgeActive: function(e){
+      if(!Object.keys(this.queryHl.tables||{}).length) return false;
+      var used=this.queryHl.tables[e.a]&&this.queryHl.tables[e.b];
+      if(this.currentStage&&this.currentStage.type==="JOIN"){
+        var s=this.currentStage.summary||"";
+        return used&&(s.indexOf(e.a)>=0||s.indexOf(e.b)>=0);
+      }
+      return used;
+    },
+    /* --- existing schema viewer methods --- */
     clean: function(x){ return String(x||"").trim().replace(/^[`"'\[]+|[`"'\]]+$/g,""); },
     parts: function(s){
       var a=[], st=0, d=0, q=null;
@@ -142,26 +939,28 @@ new Vue({
           if(c===")"&&--d===0){ end=i; break; }
         }
         if(end<0) continue;
-        var t={name:name,columns:[],pk:[],fk:[]};
+        var t={name:name,columns:[],pk:[],fk:[],unique:[]};
         this.parts(sql.slice(open+1,end)).forEach(function(p){
           var x=p.trim(), z;
           z=x.match(/^(?:CONSTRAINT\s+[`"']?([\w$-]+)[`"']?\s+)?FOREIGN\s+KEY\s*\(([^)]+)\)\s*REFERENCES\s+(?:[`"']?[\w$]+[`"']?\.)?[`"']?([\w$]+)[`"']?\s*\(([^)]+)\)/i);
           if(z){ this.cols(z[2]).forEach(function(c,i){ t.fk.push({c:c,rt:this.clean(z[3]),rc:this.clean(this.cols(z[4])[i]||this.cols(z[4])[0])}); }.bind(this)); return; }
           z=x.match(/^PRIMARY\s+KEY\s*\(([^)]+)\)/i); if(z){ t.pk.push.apply(t.pk,this.cols(z[1])); return; }
-          if(/^(KEY|INDEX|UNIQUE|FULLTEXT|SPATIAL|CHECK)\b/i.test(x)) return;
+          z=x.match(/^UNIQUE\s*(?:KEY|INDEX)?\s*\(([^)]+)\)/i); if(z){ t.unique.push.apply(t.unique,this.cols(z[1])); return; }
+          if(/^(KEY|INDEX|FULLTEXT|SPATIAL|CHECK)\b/i.test(x)) return;
           z=x.match(/^[`"']?([\w$]+)[`"']?\s+([A-Za-z]+(?:\s*\([^)]*\))?(?:\s+UNSIGNED)?)/i); if(!z) return;
-          var col=z[1]; t.columns.push({name:col,type:z[2],nullable:!/\bNOT\s+NULL\b/i.test(x)});
+          var col=z[1]; t.columns.push({name:col,type:z[2],nullable:!/\bNOT\s+NULL\b/i.test(x),notNull:/\bNOT\s+NULL\b/i.test(x)});
           if(/\bPRIMARY\s+KEY\b/i.test(x)) t.pk.push(col);
           var fk=x.match(/\bREFERENCES\s+(?:[`"']?[\w$]+[`"']?\.)?[`"']?([\w$]+)[`"']?\s*\(\s*[`"']?([\w$]+)[`"']?\s*\)/i);
           if(fk) t.fk.push({c:col,rt:this.clean(fk[1]),rc:this.clean(fk[2])});
         }.bind(this));
-        t.pk = t.pk.filter(function(v,i,a){ return a.indexOf(v)===i; });
+        t.pk=t.pk.filter(function(v,i,a){ return a.indexOf(v)===i; });
         tables[name]=t;
       }
       Object.keys(tables).forEach(function(k){
         tables[k].fk.forEach(function(f){ rels.push({a:k,ac:f.c,b:f.rt,bc:f.rc}); });
       });
       this.tables=tables; this.rels=rels; this.sel=null;
+      this.clearSeed();
       this.layoutTables();
       this.vpZoom=1; this.vpPanX=0; this.vpPanY=0;
       this.$nextTick(function(){ this.buildEdges(); this.fitView(); }.bind(this));
@@ -183,11 +982,10 @@ new Vue({
       var p=this.pos[t];
       if(!n||!p) return null;
       var r=n.querySelector('.col[data-c="'+CSS.escape(c)+'"]');
-      return { x: p.x+(side==="right"?n.offsetWidth:0), y: p.y+(r?r.offsetTop+r.offsetHeight/2:n.offsetHeight/2), side: side };
+      return { x:p.x+(side==="right"?n.offsetWidth:0), y:p.y+(r?r.offsetTop+r.offsetHeight/2:n.offsetHeight/2), side:side };
     },
     buildEdges: function(){
-      var paths=[];
-      var self=this;
+      var paths=[], self=this;
       this.rels.forEach(function(r){
         var pa=self.pos[r.a], pb=self.pos[r.b];
         if(!pa||!pb) return;
@@ -197,11 +995,8 @@ new Vue({
         if(!a||!b) return;
         var dx=Math.max(60,Math.abs(b.x-a.x)*0.45);
         var c1x=a.x+(a.side==="right"?dx:-dx), c2x=b.x+(b.side==="left"?-dx:dx);
-        paths.push({
-          d: "M "+a.x+" "+a.y+" C "+c1x+" "+a.y+", "+c2x+" "+b.y+", "+b.x+" "+b.y,
-          lx: (a.x+b.x)/2, ly: (a.y+b.y)/2-6,
-          label: r.a+"."+r.ac+" → "+r.b+"."+r.bc
-        });
+        paths.push({ d:"M "+a.x+" "+a.y+" C "+c1x+" "+a.y+", "+c2x+" "+b.y+", "+b.x+" "+b.y,
+          lx:(a.x+b.x)/2, ly:(a.y+b.y)/2-6, label:r.a+"."+r.ac+" → "+r.b+"."+r.bc, a:r.a, b:r.b, ac:r.ac, bc:r.bc });
       });
       this.edgePaths=paths;
     },
@@ -210,15 +1005,13 @@ new Vue({
       e.stopPropagation();
       var p=this.pos[name], sx=e.clientX, sy=e.clientY, ox=p.x, oy=p.y, self=this;
       function mv(v){
-        self.$set(self.pos,name,{ x: ox+(v.clientX-sx)/self.vpZoom, y: oy+(v.clientY-sy)/self.vpZoom });
+        self.$set(self.pos,name,{ x:ox+(v.clientX-sx)/self.vpZoom, y:oy+(v.clientY-sy)/self.vpZoom });
         self.buildEdges();
       }
       function up(){ document.removeEventListener("mousemove",mv); document.removeEventListener("mouseup",up); }
       document.addEventListener("mousemove",mv); document.addEventListener("mouseup",up);
     },
-    vpShouldIgnorePan: function(e){
-      return !!(e.target && e.target.closest && e.target.closest(".node"));
-    },
+    vpShouldIgnorePan: function(e){ return !!(e.target&&e.target.closest&&e.target.closest(".node")); },
     fitView: function(){
       if(!this.tableList.length) return;
       var ps=Object.values(this.pos), minX=Math.min.apply(null,ps.map(function(p){return p.x;}))-40;
@@ -227,33 +1020,71 @@ new Vue({
       var maxY=Math.max.apply(null,ps.map(function(p){return p.y;}))+280;
       this.vpFit({ minX:minX, minY:minY, maxX:maxX, maxY:maxY });
     },
-    focusTable: function(name){
-      this.sel=name;
-      var p=this.pos[name];
-      if(p) this.vpCenterOn(p.x,p.y,125,70);
-    },
+    focusTable: function(name){ this.sel=name; var p=this.pos[name]; if(p) this.vpCenterOn(p.x,p.y,125,70); },
     onSearch: function(){
       var q=this.searchQuery.toLowerCase().trim();
       if(!q){ this.sel=null; return; }
       var f=this.tableList.find(function(t){
-        return t.name.toLowerCase().indexOf(q)>=0 || t.columns.some(function(c){ return c.name.toLowerCase().indexOf(q)>=0; });
+        return t.name.toLowerCase().indexOf(q)>=0||t.columns.some(function(c){ return c.name.toLowerCase().indexOf(q)>=0; });
       });
       if(f) this.focusTable(f.name);
     },
     clearAll: function(){
       this.tables={}; this.rels=[]; this.pos={}; this.sel=null; this.sqlText=""; this.edgePaths=[];
+      this.clearSeed();
     },
-    onFile: async function(e){
-      var f=e.target.files[0];
-      if(!f) return;
-      this.sqlText=await f.text();
-      this.parseSql(this.sqlText);
+    onFile: async function(e){ var f=e.target.files[0]; if(!f) return; this.sqlText=await f.text(); this.parseSql(this.sqlText); },
+    onDrop: async function(e){ var f=e.dataTransfer.files[0]; if(!f) return; this.sqlText=await f.text(); this.parseSql(this.sqlText); },
+    toggleDataWin: function(){ this.winVisible=!this.winVisible; if(this.winVisible) this.$nextTick(this.resetWinPosition); },
+    openDataWin: function(){ this.winVisible=true; this.focusDataWin(); },
+    focusDataWin: function(){ this.winZ=30; },
+    resetWinPosition: function(){
+      var main=this.$refs.mainArea;
+      if(!main) return;
+      this.winW=Math.min(760, Math.max(420, main.clientWidth-48));
+      this.winH=Math.min(360, Math.max(200, Math.round(main.clientHeight*0.42)));
+      this.winX=Math.max(12, Math.round((main.clientWidth-this.winW)/2));
+      this.winY=Math.max(12, Math.round((main.clientHeight-this.winH)/2));
+      this.clampWinBounds();
     },
-    onDrop: async function(e){
-      var f=e.dataTransfer.files[0];
-      if(!f) return;
-      this.sqlText=await f.text();
-      this.parseSql(this.sqlText);
+    clampWinBounds: function(){
+      var main=this.$refs.mainArea;
+      if(!main) return;
+      var maxW=main.clientWidth-12, maxH=main.clientHeight-12;
+      this.winW=Math.max(300, Math.min(this.winW, maxW));
+      this.winH=Math.max(140, Math.min(this.winH, maxH));
+      this.winX=Math.max(0, Math.min(this.winX, main.clientWidth-this.winW));
+      this.winY=Math.max(0, Math.min(this.winY, main.clientHeight-this.winH));
+    },
+    onWinResize: function(){ if(this.winVisible) this.clampWinBounds(); },
+    startWinDrag: function(e){
+      if(e.button!==0) return;
+      e.preventDefault();
+      this.focusDataWin();
+      var sx=e.clientX, sy=e.clientY, ox=this.winX, oy=this.winY, self=this;
+      function mv(v){
+        self.winX=ox+(v.clientX-sx);
+        self.winY=oy+(v.clientY-sy);
+        self.clampWinBounds();
+      }
+      function up(){ document.removeEventListener("mousemove",mv); document.removeEventListener("mouseup",up); }
+      document.addEventListener("mousemove",mv); document.addEventListener("mouseup",up);
+    },
+    startWinResize: function(e, mode){
+      if(e.button!==0) return;
+      e.preventDefault();
+      this.focusDataWin();
+      var sx=e.clientX, sy=e.clientY, ow=this.winW, oh=this.winH, ox=this.winX, oy=this.winY, self=this;
+      function mv(v){
+        var dx=v.clientX-sx, dy=v.clientY-sy;
+        if(mode==="r"||mode==="br") self.winW=ow+dx;
+        if(mode==="b"||mode==="br") self.winH=oh+dy;
+        if(mode==="l"){ self.winW=ow-dx; self.winX=ox+dx; }
+        if(mode==="t"){ self.winH=oh-dy; self.winY=oy+dy; }
+        self.clampWinBounds();
+      }
+      function up(){ document.removeEventListener("mousemove",mv); document.removeEventListener("mouseup",up); }
+      document.addEventListener("mousemove",mv); document.addEventListener("mouseup",up);
     }
   }
 });
