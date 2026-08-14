@@ -47,13 +47,14 @@ textarea{resize:vertical;font:11px/1.45 ui-monospace,SFMono-Regular,Menlo,monosp
 .node.active{border-color:#4ade80;box-shadow:0 0 0 2px #4ade8033,0 0 25px #4ade8022}
 .node.waiting{border-color:#f59e0b;box-shadow:0 0 0 2px #f59e0b33,0 0 25px #f59e0b22}
 .node.error{border-color:#f87171;box-shadow:0 0 0 2px #f8717133,0 0 25px #f8717122}
+.node.complete{border-color:#64748b;box-shadow:0 0 0 1px #64748b44}
 .node.cycle{border-color:#f87171;box-shadow:0 0 0 2px #f8717155,0 0 28px #f8717133}
 .node.connecting{border-color:#60a5fa;box-shadow:0 0 0 2px #60a5fa44,0 0 25px #60a5fa22}
 .node.connectTarget{border-color:#a78bfa;box-shadow:0 0 0 2px #a78bfa44,0 0 25px #a78bfa22}
 .nhead{display:flex;align-items:center;gap:8px;padding:9px 10px;background:#1e293b;border-bottom:1px solid #334155;font-size:12px;font-weight:750}
 .nbody{padding:7px 10px;font-size:9px;color:#94a3b8;line-height:1.45}.ntype{color:#64748b;font-size:8px;margin-left:auto}
 .nstatus{font-size:8px;letter-spacing:.04em;text-transform:uppercase;padding:4px 10px 8px;color:#64748b}
-.nstatus.processing{color:#4ade80}.nstatus.waiting{color:#fbbf24}.nstatus.error{color:#f87171}
+.nstatus.processing{color:#4ade80}.nstatus.waiting{color:#fbbf24}.nstatus.error{color:#f87171}.nstatus.complete{color:#93c5fd}
 .edge-hit{fill:none;stroke:transparent;stroke-width:16;pointer-events:stroke;cursor:pointer}
 .edge-line{fill:none;stroke:#64748b;stroke-width:2}
 .edge-line.active{stroke:#4ade80;stroke-width:3}
@@ -79,7 +80,7 @@ textarea{resize:vertical;font:11px/1.45 ui-monospace,SFMono-Regular,Menlo,monosp
 <div id="app">
   <div class="toolbar">
     <div class="title">Service Flow Visualizer</div>
-    <div class="sub">REST · Webhook · Socket · Database</div>
+    <div class="sub">REST · Query</div>
     <div class="spacer"></div>
     <span class="mode" :class="modeClass">{{ mode }}</span>
     <button class="primary" @click="runFlow">▶ Run</button>
@@ -205,7 +206,7 @@ textarea{resize:vertical;font:11px/1.45 ui-monospace,SFMono-Regular,Menlo,monosp
           <select v-model="linkForm.type">
             <option v-for="t in commTypes" :key="t">{{ t }}</option>
           </select>
-          <div v-show="linkForm.type!=='DATABASE'">
+          <div v-show="linkForm.type!=='QUERY'">
             <div class="grid2">
               <div><label class="label">HTTP Method</label>
                 <select v-model="linkForm.method">
@@ -215,7 +216,7 @@ textarea{resize:vertical;font:11px/1.45 ui-monospace,SFMono-Regular,Menlo,monosp
               <div><label class="label">Path</label><input v-model="linkForm.path"></div>
             </div>
           </div>
-          <label class="label">{{ linkForm.type==='DATABASE' ? 'SQL Query / Request' : 'Request / Query / Message' }}</label>
+          <label class="label">{{ linkForm.type==='QUERY' ? 'SQL Query / Request' : 'Request Body' }}</label>
           <textarea v-model="linkForm.payload" rows="6"></textarea>
           <label class="label">Response</label>
           <textarea v-model="linkForm.response" rows="5"></textarea>
@@ -287,6 +288,8 @@ new Vue({
       cycleNodes: [],
       animToken: 0,
       hadError: false,
+      queueBusy: {},
+      queuePending: {},
       mode: "Ready",
       simStatus: "Ready.",
       bannerText: "",
@@ -299,7 +302,7 @@ new Vue({
         errorType: "Invalid payload", errorMessage: "Payload validation failed.", duration: 900
       },
       nodeTypes: ["service","database","external","queue"],
-      commTypes: ["REST","WEBHOOK","SOCKET","DATABASE"],
+      commTypes: ["REST","QUERY"],
       httpMethods: ["GET","POST","PUT","PATCH","DELETE"],
       errorTypes: ERROR_TYPES
     };
@@ -388,7 +391,8 @@ new Vue({
     dotClass: function(t) { return t === "database" ? "db" : t === "external" ? "external" : t === "queue" ? "queue" : ""; },
     nodeName: function(id) { var n = this.nodes.find(function(x){ return x.id === id; }); return n ? n.name : "(deleted)"; },
     linkMeta: function(l) { return l.type === "REST" ? l.type + " " + l.method : l.type; },
-    payloadOf: function(l) { return l.type === "DATABASE" ? (l.query || l.request || "") : (l.request || l.query || ""); },
+    isQueryLink: function(l) { return l.type === "QUERY" || l.type === "DATABASE"; },
+    payloadOf: function(l) { return this.isQueryLink(l) ? (l.query || l.request || "") : (l.request || l.query || ""); },
     incomingLinks: function(id) { return this.links.filter(function(l){ return l.to === id; }); },
     outgoingLinks: function(id) { return this.links.filter(function(l){ return l.from === id; }); },
     bumpGeom: function() { this.geomTick++; },
@@ -402,11 +406,13 @@ new Vue({
       }.bind(this));
     },
     nodeClasses: function(n) {
+      var s = this.nodeRuntime[n.id];
       return {
         selected: this.selected === n.id,
-        active: this.nodeRuntime[n.id] === "processing",
-        waiting: this.nodeRuntime[n.id] === "waiting",
-        error: this.nodeRuntime[n.id] === "error",
+        active: s === "processing",
+        waiting: s === "waiting",
+        error: s === "error",
+        complete: s === "complete",
         cycle: this.cycleNodes.indexOf(n.id) >= 0,
         connecting: this.connecting && this.connecting.from === n.id,
         connectTarget: this.connecting && this.connecting.target === n.id
@@ -414,15 +420,24 @@ new Vue({
     },
     nodeStatus: function(id) {
       var s = this.nodeRuntime[id];
+      if (s === "complete") return "Complete";
+      if (s === "error") return "Error";
+      if (!this.running) return "";
+      var pending = this.queuePending[id];
+      if (pending && pending.length) return "Queue: " + pending.length + " waiting";
       if (s === "processing") return "Processing";
       if (s === "waiting") return "Waiting for dependency";
-      if (s === "error") return "Error";
       if (this.cycleNodes.indexOf(id) >= 0) return "Cycle";
       return "";
     },
+    normalizeLinkType: function(type) {
+      if (type === "DATABASE") return "QUERY";
+      if (this.commTypes.indexOf(type) >= 0) return type;
+      return "REST";
+    },
     syncLinkForm: function(l) {
       this.linkForm = {
-        from: l.from, to: l.to, type: l.type, method: l.method || "POST",
+        from: l.from, to: l.to, type: this.normalizeLinkType(l.type), method: l.method || "POST",
         path: l.path || "", payload: this.payloadOf(l), response: l.response || "",
         simulateError: !!l.simulateError, errorType: l.errorType || "Invalid payload",
         errorMessage: l.errorMessage || "", duration: l.duration || 900
@@ -433,7 +448,7 @@ new Vue({
       var isDb = toNode && toNode.type === "database";
       return {
         id: this.uid("link"), from: from, to: to,
-        type: isDb ? "DATABASE" : "REST", method: isDb ? "QUERY" : "POST",
+        type: isDb ? "QUERY" : "REST", method: isDb ? "QUERY" : "POST",
         path: isDb ? "" : "/api/example",
         request: isDb ? "" : '{\n  "id": 123\n}',
         query: isDb ? "SELECT *\nFROM users\nWHERE id = 123;" : "",
@@ -501,7 +516,7 @@ new Vue({
       l.type = this.linkForm.type;
       l.method = this.linkForm.method;
       l.path = this.linkForm.path;
-      if (l.type === "DATABASE") l.query = this.linkForm.payload; else l.request = this.linkForm.payload;
+      if (l.type === "QUERY") l.query = this.linkForm.payload; else l.request = this.linkForm.payload;
       l.response = this.linkForm.response;
       l.simulateError = this.linkForm.simulateError;
       l.errorType = this.linkForm.errorType;
@@ -672,7 +687,55 @@ new Vue({
       var prev = this.nodeRuntime[id];
       if (status === "processing" && prev === "error") return;
       if (status === "waiting" && prev === "error") return;
+      if (status === "processing" && prev === "complete") return;
       this.$set(this.nodeRuntime, id, status);
+    },
+    isNodeBusy: function(nodeId) {
+      var self = this;
+      if (this.queueBusy[nodeId]) return true;
+      var execBusy = Object.keys(this.executions).some(function(eid) {
+        var e = self.executions[eid];
+        if (e.responseReceived) return false;
+        var l = self.getLink(e.linkId);
+        return l && (l.from === nodeId || l.to === nodeId);
+      });
+      if (execBusy) return true;
+      return Object.keys(this.contexts).some(function(cid) {
+        var c = self.contexts[cid];
+        var l = self.getLink(c.incomingLinkId);
+        return l && l.to === nodeId && !c.responded;
+      });
+    },
+    setNodeIdleIfDone: function(nodeId) {
+      if (!this.running) return;
+      if (this.nodeRuntime[nodeId] === "error") return;
+      if (this.isNodeBusy(nodeId)) {
+        if (this.queuePending[nodeId] && this.queuePending[nodeId].length) {
+          this.setNodeState(nodeId, "waiting");
+        }
+        return;
+      }
+      this.$delete(this.nodeRuntime, nodeId);
+    },
+    nodeWasInvolved: function(nodeId) {
+      var self = this;
+      return Object.keys(this.executions).some(function(eid) {
+        var l = self.getLink(self.executions[eid].linkId);
+        return l && (l.from === nodeId || l.to === nodeId);
+      });
+    },
+    finalizeNodeStates: function() {
+      var self = this;
+      this.nodes.forEach(function(n) {
+        if (!self.nodeWasInvolved(n.id)) {
+          self.$delete(self.nodeRuntime, n.id);
+          return;
+        }
+        if (self.nodeRuntime[n.id] === "error") return;
+        self.$set(self.nodeRuntime, n.id, "complete");
+      });
+      this.queueBusy = {};
+      this.queuePending = {};
     },
     patchLinkVisual: function(linkId, patch) {
       var rt = this.linkRuntime[linkId] || {};
@@ -706,7 +769,7 @@ new Vue({
     },
     requestMeta: function(l) {
       if (l.type === "REST") return "REQUEST " + l.type + " " + l.method + " " + (l.path || "");
-      if (l.type === "DATABASE") return "REQUEST DATABASE";
+      if (l.type === "QUERY" || l.type === "DATABASE") return "REQUEST QUERY";
       return "REQUEST " + l.type;
     },
     runFlow: function() {
@@ -745,6 +808,8 @@ new Vue({
       this.executions = {};
       this.cycleNodes = [];
       this.bannerText = "";
+      this.queueBusy = {};
+      this.queuePending = {};
       var self = this;
       this.links.forEach(function(l) {
         self.$set(self.linkRuntime, l.id, {
@@ -799,10 +864,48 @@ new Vue({
       var exec = this.executions[execId];
       var link = this.getLink(exec.linkId);
       if (!link) return;
-      this.beginContext(link, execId);
+      this.handleIncomingRequest(link, execId);
       this.bumpGeom();
     },
-    beginContext: function(incomingLink, sourceExecId) {
+    getNodeById: function(id) {
+      return this.nodes.find(function(n){ return n.id === id; });
+    },
+    isQueueNode: function(nodeId) {
+      var n = this.getNodeById(nodeId);
+      return n && n.type === "queue";
+    },
+    /* Queue nodes process incoming requests strictly one at a time (FIFO). */
+    handleIncomingRequest: function(incomingLink, sourceExecId) {
+      var nodeId = incomingLink.to;
+      if (!this.isQueueNode(nodeId)) {
+        this.processContext(incomingLink, sourceExecId);
+        return;
+      }
+      if (!this.queueBusy[nodeId]) {
+        this.$set(this.queueBusy, nodeId, true);
+        this.log(this.nodeName(nodeId) + " processing request (queue — one at a time)", "warn");
+        this.processContext(incomingLink, sourceExecId);
+        return;
+      }
+      if (!this.queuePending[nodeId]) this.$set(this.queuePending, nodeId, []);
+      this.queuePending[nodeId].push({ incomingLink: incomingLink, sourceExecId: sourceExecId });
+      this.log(this.nodeName(nodeId) + " enqueued request — " + this.queuePending[nodeId].length + " waiting in queue", "warn");
+      this.setNodeState(nodeId, "waiting");
+    },
+    finishQueueItem: function(nodeId) {
+      if (!this.isQueueNode(nodeId) || !this.running) return;
+      var pending = this.queuePending[nodeId];
+      if (pending && pending.length) {
+        var next = pending.shift();
+        this.log(this.nodeName(nodeId) + " dequeuing next request (" + pending.length + " still waiting)", "warn");
+        this.setNodeState(nodeId, "processing");
+        this.processContext(next.incomingLink, next.sourceExecId);
+      } else {
+        this.$set(this.queueBusy, nodeId, false);
+        this.setNodeIdleIfDone(nodeId);
+      }
+    },
+    processContext: function(incomingLink, sourceExecId) {
       var ctxId = this.uid("ctx");
       var self = this;
       this.$set(this.contexts, ctxId, {
@@ -822,7 +925,7 @@ new Vue({
       }
       this.setNodeState(nodeId, "processing");
       this.log(this.nodeName(nodeId) + " received REQUEST from " + this.nodeName(incomingLink.from), "ok");
-      if (incomingLink.type === "DATABASE") {
+      if (incomingLink.type === "QUERY" || incomingLink.type === "DATABASE") {
         var q = this.payloadOf(incomingLink);
         if (q) this.log("Query:\n" + q, "muted");
       }
@@ -856,6 +959,9 @@ new Vue({
         self.patchLinkVisual(link.id, { responseActive: false, responseReceived: true });
         self.packets = self.packets.filter(function(p){ return !(p.execId === ctx.sourceExecId && p.response); });
         self.completeExecution(ctx.sourceExecId, error);
+        self.finishQueueItem(link.to);
+        self.setNodeIdleIfDone(link.to);
+        self.setNodeIdleIfDone(link.from);
         self.updateTimeline();
         self.checkFinish();
         self.bumpGeom();
@@ -878,7 +984,10 @@ new Vue({
           });
         })) {
           this.setNodeState(link.from, "waiting");
+        } else {
+          this.setNodeIdleIfDone(link.from);
         }
+        this.setNodeIdleIfDone(link.to);
       }
       if (exec.parentContextId) {
         var parent = this.contexts[exec.parentContextId];
@@ -958,6 +1067,8 @@ new Vue({
       this.hadError = false;
       this.logs = [];
       this.bannerText = "";
+      this.queueBusy = {};
+      this.queuePending = {};
       this.setMode("Ready", "Ready.");
       this.timeline = 0;
       this.bumpGeom();
@@ -966,6 +1077,7 @@ new Vue({
       this.running = false;
       this.paused = false;
       this.packets = [];
+      this.finalizeNodeStates();
       this.updateTimeline();
       this.setMode(this.hadError ? "Error" : "Complete",
         this.hadError ? "Flow finished with errors. Dependency order was still respected." : "Flow completed — all request/response cycles finished.");
