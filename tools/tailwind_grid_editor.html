@@ -111,6 +111,11 @@ input:disabled{opacity:.45;cursor:not-allowed}
   font:11px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap;
   word-break:break-word;min-height:72px;color:#93c5fd
 }
+.code-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.code-head h3{margin:0}
+.code-actions{display:flex;gap:6px;align-items:center}
+.code-actions button{padding:5px 10px;font-size:11px}
+.code-actions .copied{font-size:10px;color:#4ade80}
 .block-list{display:flex;flex-direction:column;gap:6px}
 .block-item{
   display:flex;align-items:center;gap:8px;padding:9px 10px;background:#0b1220;
@@ -332,8 +337,14 @@ input:disabled{opacity:.45;cursor:not-allowed}
         </div>
       </div>
 
-      <div class="section">
-        <h3>Generated Tailwind</h3>
+      <div class="section code-wrap">
+        <div class="code-head">
+          <h3>Generated Tailwind</h3>
+          <div class="code-actions">
+            <span v-if="copyDone" class="copied">Copied!</span>
+            <button @click="copyGenerated">Copy</button>
+          </div>
+        </div>
         <div id="generatedCode" class="code">{{ generatedCodeText }}</div>
       </div>
 
@@ -377,7 +388,9 @@ new Vue({
         md: { enabled: true, cols: 12, rows: 12 },
         lg: { enabled: true, cols: 12, rows: 12 }
       },
-      layouts: { sm: [], md: [], lg: [] }
+      layouts: { sm: [], md: [], lg: [] },
+      copyDone: false,
+      copyTimer: null
     };
   },
   watch: {
@@ -407,10 +420,7 @@ new Vue({
       return `${this.currentBreakpoint.toUpperCase()}: ${g.enabled ? `${g.cols} columns × ${g.rows} rows` : 'disabled'}`;
     },
     generatedCodeText() {
-      if (this.selectedId === null) {
-        return this.parentGridCode() || '(all breakpoints disabled)';
-      }
-      return this.generatedForBlock(this.selectedId);
+      return this.buildHtmlCode();
     },
     blockIds() {
       return [...new Set(this.BREAKPOINTS.flatMap(bp => this.layouts[bp].map(b => b.id)))];
@@ -641,33 +651,77 @@ new Vue({
       document.addEventListener('mouseup', stop);
     },
     getTailwindClass(block) {
-      const col = `col-span-${block.colSpan}`;
-      const row = `row-span-${block.rowSpan}`;
-      return `${col} ${row}`;
+      return this.blockTailwindClasses(block);
+    },
+    blockTailwindClasses(block, prefix) {
+      const p = prefix || '';
+      return [
+        `${p}col-start-${block.colStart}`,
+        `${p}col-span-${block.colSpan}`,
+        `${p}row-start-${block.rowStart}`,
+        `${p}row-span-${block.rowSpan}`
+      ].join(' ');
     },
     generatedForBlock(id) {
       const parts = [];
       for (const bp of this.BREAKPOINTS) {
         const b = this.getBlock(id, bp);
         if (!b || !this.grid[bp].enabled) continue;
-
-        parts.push(
-          bp === 'sm' ? `${this.PREFIX.sm}col-span-${b.colSpan} ${this.PREFIX.sm}row-span-${b.rowSpan}` :
-          bp === 'md' ? `${this.PREFIX.md}col-span-${b.colSpan} ${this.PREFIX.md}row-span-${b.rowSpan}` :
-          `${this.PREFIX.lg}col-span-${b.colSpan} ${this.PREFIX.lg}row-span-${b.rowSpan}`
-        );
+        const prefix = this.PREFIX[bp];
+        parts.push(this.blockTailwindClasses(b, prefix));
       }
       return parts.join(' ');
     },
     parentGridCode() {
-      const parts = [];
+      const parts = ['grid'];
       for (const bp of this.BREAKPOINTS) {
         if (!this.grid[bp].enabled) continue;
-        const prefix = bp === 'sm' ? this.PREFIX.sm : bp === 'md' ? this.PREFIX.md : this.PREFIX.lg;
+        const prefix = this.PREFIX[bp];
         parts.push(`${prefix}grid-cols-${this.grid[bp].cols}`);
         parts.push(`${prefix}grid-rows-${this.grid[bp].rows}`);
+        parts.push(`${prefix}gap-4`);
       }
       return parts.join(' ');
+    },
+    formatClassAttr(classStr, indent) {
+      const pad = indent || '    ';
+      const tokens = String(classStr || '').split(/\s+/).filter(Boolean);
+      if (!tokens.length) return '';
+      const groups = { base: [], sm: [], md: [], lg: [] };
+      tokens.forEach(t => {
+        if (t.startsWith('sm:')) groups.sm.push(t);
+        else if (t.startsWith('md:')) groups.md.push(t);
+        else if (t.startsWith('lg:')) groups.lg.push(t);
+        else groups.base.push(t);
+      });
+      const lines = [];
+      if (groups.base.length) lines.push(groups.base.join(' '));
+      if (groups.sm.length) lines.push(groups.sm.join(' '));
+      if (groups.md.length) lines.push(groups.md.join(' '));
+      if (groups.lg.length) lines.push(groups.lg.join(' '));
+      return lines.map(line => pad + line).join('\n');
+    },
+    buildHtmlCode() {
+      const parent = this.parentGridCode();
+      if (!parent) return '(all breakpoints disabled)';
+
+      const ids = this.blockIds;
+      let out = `<div class="\n${this.formatClassAttr(parent, '  ')}\n">`;
+
+      if (!ids.length) {
+        out += '\n\n</div>';
+        return out;
+      }
+
+      ids.forEach(id => {
+        const b = this.getLogicalBlock(id);
+        if (!b) return;
+        const classes = this.generatedForBlock(id);
+        out += `\n\n  <div class="\n${this.formatClassAttr(classes, '    ')}\n  ">\n    ${this.escapeHtml(b.name)}\n  </div>`;
+      });
+
+      out += '\n\n</div>';
+      return out;
     },
     editGeometry(key, value) {
       const b = this.getBlock(this.selectedId);
@@ -688,15 +742,22 @@ new Vue({
       }
       Object.assign(b, candidate);
     },
+    async copyGenerated() {
+      const text = this.generatedCodeText;
+      if (!text || text.startsWith('(')) return;
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch {
+        prompt('Copy this code:', text);
+        return;
+      }
+      this.copyDone = true;
+      clearTimeout(this.copyTimer);
+      this.copyTimer = setTimeout(() => { this.copyDone = false; }, 1600);
+    },
     async copyCode() {
-      let out = `<div class="grid ${this.parentGridCode()}">\n`;
-
-      this.blockIds.forEach(id => {
-        const b = this.getLogicalBlock(id);
-        out += `  <div class="${this.generatedForBlock(id)}">${this.escapeHtml(b.name)}</div>\n`;
-      });
-      out += '</div>';
-
+      const out = this.buildHtmlCode();
+      if (out.startsWith('(')) return;
       try {
         await navigator.clipboard.writeText(out);
         alert('Tailwind code copied.');
